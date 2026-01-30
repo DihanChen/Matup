@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { createClient } from "@/lib/supabase";
 import Navbar from "@/components/Navbar";
 import { useSearchParams } from "next/navigation";
@@ -55,6 +55,21 @@ function formatDistance(km: number): string {
 }
 
 export default function EventsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
+        <Navbar />
+        <div className="flex items-center justify-center py-20">
+          <div className="text-zinc-500">Loading...</div>
+        </div>
+      </div>
+    }>
+      <EventsContent />
+    </Suspense>
+  );
+}
+
+function EventsContent() {
   const searchParams = useSearchParams();
   const sportFromUrl = searchParams.get("sport") || "";
 
