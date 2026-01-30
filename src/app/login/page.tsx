@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase";
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-900 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-[#fbfbfd] px-4">
         <div className="text-zinc-500">Loading...</div>
       </div>
     }>
@@ -47,7 +47,6 @@ function LoginContent() {
       return;
     }
 
-    // Sync profile to profiles table (for existing users)
     if (data.user) {
       await supabase.from("profiles").upsert({
         id: data.user.id,
@@ -60,32 +59,32 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-900 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#fbfbfd] px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="text-3xl font-bold text-emerald-600">
+          <Link href="/" className="text-2xl font-semibold text-zinc-900 hover:text-emerald-600 transition-colors">
             MatUp
           </Link>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-white mt-6">
+          <h1 className="text-3xl font-semibold text-zinc-900 mt-8 tracking-tight">
             Welcome back
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400 mt-2">
-            Log in to find your fitness partners
+          <p className="text-zinc-500 mt-2">
+            Sign in to find your fitness partners
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white dark:bg-zinc-800 p-8 rounded-xl border border-zinc-200 dark:border-zinc-700"
+          className="bg-white p-8 rounded-2xl border border-zinc-200 shadow-sm"
         >
           {message && (
-            <div className="mb-4 p-3 bg-emerald-100 border border-emerald-300 text-emerald-700 rounded-lg text-sm">
+            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-sm">
               {message}
             </div>
           )}
 
           {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm">
               {error}
             </div>
           )}
@@ -94,7 +93,7 @@ function LoginContent() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1"
+                className="block text-sm font-medium text-zinc-700 mb-1.5"
               >
                 Email
               </label>
@@ -103,7 +102,7 @@ function LoginContent() {
                 id="email"
                 name="email"
                 required
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all"
                 placeholder="you@example.com"
               />
             </div>
@@ -111,7 +110,7 @@ function LoginContent() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1"
+                className="block text-sm font-medium text-zinc-700 mb-1.5"
               >
                 Password
               </label>
@@ -120,19 +119,19 @@ function LoginContent() {
                 id="password"
                 name="password"
                 required
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all"
                 placeholder="••••••••"
               />
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center text-zinc-600 dark:text-zinc-400">
-                <input type="checkbox" className="mr-2 rounded" />
+              <label className="flex items-center text-zinc-600">
+                <input type="checkbox" className="mr-2 rounded border-zinc-300" />
                 Remember me
               </label>
               <Link
                 href="/forgot-password"
-                className="text-emerald-600 hover:underline"
+                className="text-emerald-600 hover:text-emerald-700 font-medium"
               >
                 Forgot password?
               </Link>
@@ -141,17 +140,17 @@ function LoginContent() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-zinc-900 text-white rounded-xl font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Logging in..." : "Log in"}
+              {loading ? "Signing in..." : "Sign in"}
             </button>
           </div>
         </form>
 
-        <p className="text-center text-zinc-600 dark:text-zinc-400 mt-6">
+        <p className="text-center text-zinc-500 mt-6">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-emerald-600 hover:underline">
-            Sign up
+          <Link href="/signup" className="text-emerald-600 hover:text-emerald-700 font-medium">
+            Get started
           </Link>
         </p>
       </div>

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import Navbar from "@/components/Navbar";
+import { formatShortAddress } from "@/lib/formatAddress";
 
 type Event = {
   id: string;
@@ -39,7 +40,6 @@ export default function DashboardPage() {
 
       setUser(user);
 
-      // Fetch events created by user
       const { data: created } = await supabase
         .from("events")
         .select("*")
@@ -49,7 +49,6 @@ export default function DashboardPage() {
 
       setCreatedEvents(created || []);
 
-      // Fetch events user has joined
       const { data: participations } = await supabase
         .from("event_participants")
         .select("event_id")
@@ -62,14 +61,13 @@ export default function DashboardPage() {
           .from("events")
           .select("*")
           .in("id", eventIds)
-          .neq("creator_id", user.id) // Exclude events they created
+          .neq("creator_id", user.id)
           .gte("datetime", new Date().toISOString())
           .order("datetime", { ascending: true });
 
         setJoinedEvents(joined || []);
       }
 
-      // Fetch past events (both created and joined)
       const { data: pastCreated } = await supabase
         .from("events")
         .select("*")
@@ -101,7 +99,6 @@ export default function DashboardPage() {
         }
       }
 
-      // Sort by date and remove duplicates
       allPastEvents.sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
       setPastEvents(allPastEvents.slice(0, 10));
 
@@ -113,7 +110,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
+      <div className="min-h-screen bg-[#fbfbfd]">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           <div className="text-zinc-500">Loading...</div>
@@ -123,52 +120,64 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
+    <div className="min-h-screen bg-[#fbfbfd]">
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-8">
-          Welcome, {user?.user_metadata?.name || "there"}!
+      <main className="max-w-[980px] mx-auto px-6 py-8">
+        <h1 className="text-3xl font-semibold text-zinc-900 mb-8 tracking-tight">
+          Welcome, {user?.user_metadata?.name || "there"}
         </h1>
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
+        <div className="grid md:grid-cols-3 gap-4 mb-12">
           <Link
             href="/events/create"
-            className="p-6 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 transition-colors"
+            className="group p-6 bg-white rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all"
           >
-            <div className="text-3xl mb-3">📅</div>
-            <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">
+            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+              <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-zinc-900 mb-1">
               Create Event
             </h2>
-            <p className="text-zinc-600 dark:text-zinc-400">
-              Organize a fitness event and find partners
+            <p className="text-sm text-zinc-500">
+              Organize a fitness event
             </p>
           </Link>
 
           <Link
             href="/events"
-            className="p-6 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 transition-colors"
+            className="group p-6 bg-white rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all"
           >
-            <div className="text-3xl mb-3">🔍</div>
-            <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">
+            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mb-4">
+              <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-zinc-900 mb-1">
               Find Events
             </h2>
-            <p className="text-zinc-600 dark:text-zinc-400">
-              Browse and join fitness events near you
+            <p className="text-sm text-zinc-500">
+              Browse events near you
             </p>
           </Link>
 
           <Link
             href="/profile"
-            className="p-6 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 transition-colors"
+            className="group p-6 bg-white rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all"
           >
-            <div className="text-3xl mb-3">👤</div>
-            <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">
+            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mb-4">
+              <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-zinc-900 mb-1">
               My Profile
             </h2>
-            <p className="text-zinc-600 dark:text-zinc-400">
-              Update your profile and preferences
+            <p className="text-sm text-zinc-500">
+              Update your preferences
             </p>
           </Link>
         </div>
@@ -176,7 +185,7 @@ export default function DashboardPage() {
         {/* Events I'm Hosting */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
+            <h2 className="text-xl font-semibold text-zinc-900">
               Events I&apos;m Hosting
             </h2>
             <span className="text-sm text-zinc-500">
@@ -185,13 +194,13 @@ export default function DashboardPage() {
           </div>
 
           {createdEvents.length === 0 ? (
-            <div className="bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 p-8 text-center">
-              <p className="text-zinc-500 dark:text-zinc-400 mb-4">
+            <div className="bg-white rounded-2xl border border-zinc-200 p-8 text-center">
+              <p className="text-zinc-500 mb-4">
                 You haven&apos;t created any events yet.
               </p>
               <Link
                 href="/events/create"
-                className="inline-block px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                className="inline-block px-5 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors"
               >
                 Create Your First Event
               </Link>
@@ -208,7 +217,7 @@ export default function DashboardPage() {
         {/* Events I've Joined */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
+            <h2 className="text-xl font-semibold text-zinc-900">
               Events I&apos;ve Joined
             </h2>
             <span className="text-sm text-zinc-500">
@@ -217,13 +226,13 @@ export default function DashboardPage() {
           </div>
 
           {joinedEvents.length === 0 ? (
-            <div className="bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 p-8 text-center">
-              <p className="text-zinc-500 dark:text-zinc-400 mb-4">
+            <div className="bg-white rounded-2xl border border-zinc-200 p-8 text-center">
+              <p className="text-zinc-500 mb-4">
                 You haven&apos;t joined any events yet.
               </p>
               <Link
                 href="/events"
-                className="inline-block px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                className="inline-block px-5 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors"
               >
                 Browse Events
               </Link>
@@ -240,7 +249,7 @@ export default function DashboardPage() {
         {/* Past Events */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
+            <h2 className="text-xl font-semibold text-zinc-900">
               Past Events
             </h2>
             <button
@@ -253,8 +262,8 @@ export default function DashboardPage() {
 
           {showPastEvents && (
             pastEvents.length === 0 ? (
-              <div className="bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 p-8 text-center">
-                <p className="text-zinc-500 dark:text-zinc-400">
+              <div className="bg-white rounded-2xl border border-zinc-200 p-8 text-center">
+                <p className="text-zinc-500">
                   No past events yet. Your event history will appear here.
                 </p>
               </div>
@@ -292,33 +301,44 @@ function EventCard({ event, isCreator, isPast }: { event: Event; isCreator?: boo
   return (
     <Link
       href={`/events/${event.id}`}
-      className={`block bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 transition-colors p-4 ${isPast ? "opacity-75" : ""}`}
+      className={`block bg-white rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all p-5 ${isPast ? "opacity-60" : ""}`}
     >
-      <div className="flex items-start justify-between mb-2">
+      <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs rounded capitalize">
+          <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full capitalize">
             {event.sport_type}
           </span>
           {isPast && (
-            <span className="px-2 py-1 bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 text-xs rounded">
+            <span className="px-2.5 py-1 bg-zinc-100 text-zinc-500 text-xs font-medium rounded-full">
               Completed
             </span>
           )}
         </div>
         {isCreator && (
-          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs rounded">
-            Hosted
+          <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
+            Host
           </span>
         )}
       </div>
 
-      <h3 className="font-semibold text-zinc-900 dark:text-white mb-2">
+      <h3 className="font-semibold text-zinc-900 mb-3">
         {event.title}
       </h3>
 
-      <div className="text-sm text-zinc-600 dark:text-zinc-400 space-y-1">
-        <p>📍 {event.location}</p>
-        <p>📅 {formattedDate} at {formattedTime}</p>
+      <div className="text-sm text-zinc-500 space-y-1.5">
+        <p className="flex items-center gap-2" title={event.location}>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span className="truncate">{formatShortAddress(event.location)}</span>
+        </p>
+        <p className="flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          {formattedDate} at {formattedTime}
+        </p>
       </div>
     </Link>
   );

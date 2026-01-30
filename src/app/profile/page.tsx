@@ -192,7 +192,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
+      <div className="min-h-screen bg-zinc-50">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           <div className="text-zinc-500">Loading...</div>
@@ -202,7 +202,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
+    <div className="min-h-screen bg-[#fbfbfd]">
       {/* Success/Error Banner */}
       {message && (
         <div
@@ -323,8 +323,8 @@ export default function ProfilePage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info Card */}
-          <div className="bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-6 flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-zinc-200 p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-zinc-900 mb-6 flex items-center gap-2">
               <span className="text-2xl">👤</span> Basic Info
             </h2>
 
@@ -332,7 +332,7 @@ export default function ProfilePage() {
               <div>
                 <label
                   htmlFor="name"
-                  className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                  className="block text-sm font-medium text-zinc-700 mb-2"
                 >
                   Display Name
                 </label>
@@ -341,7 +341,7 @@ export default function ProfilePage() {
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-600 rounded-xl bg-zinc-50 dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                   placeholder="What should we call you?"
                 />
               </div>
@@ -349,7 +349,7 @@ export default function ProfilePage() {
               <div>
                 <label
                   htmlFor="bio"
-                  className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                  className="block text-sm font-medium text-zinc-700 mb-2"
                 >
                   Bio
                 </label>
@@ -358,7 +358,7 @@ export default function ProfilePage() {
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-600 rounded-xl bg-zinc-50 dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                   placeholder="Tell others about your fitness journey..."
                 />
               </div>
@@ -366,11 +366,11 @@ export default function ProfilePage() {
           </div>
 
           {/* Activities Card */}
-          <div className="bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2 flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-zinc-200 p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-zinc-900 mb-2 flex items-center gap-2">
               <span className="text-2xl">🏆</span> My Activities
             </h2>
-            <p className="text-zinc-500 dark:text-zinc-400 mb-6">
+            <p className="text-zinc-500 mb-6">
               Select the activities you&apos;re interested in
             </p>
 
@@ -384,16 +384,16 @@ export default function ProfilePage() {
                     onClick={() => toggleActivity(activity.id)}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       isSelected
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30"
-                        : "border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700"
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-zinc-200 hover:border-emerald-300"
                     }`}
                   >
                     <div className="text-3xl mb-2">{activity.icon}</div>
                     <div
                       className={`text-sm font-medium ${
                         isSelected
-                          ? "text-emerald-700 dark:text-emerald-300"
-                          : "text-zinc-600 dark:text-zinc-400"
+                          ? "text-emerald-700"
+                          : "text-zinc-600"
                       }`}
                     >
                       {activity.label}
@@ -417,7 +417,7 @@ export default function ProfilePage() {
           </button>
 
           {/* Member Info */}
-          <p className="text-center text-zinc-500 dark:text-zinc-400 text-sm">
+          <p className="text-center text-zinc-500 text-sm">
             Member since{" "}
             {new Date(user?.created_at || "").toLocaleDateString("en-US", {
               month: "long",

@@ -5,6 +5,7 @@ import { useEffect, useState, Suspense } from "react";
 import { createClient } from "@/lib/supabase";
 import Navbar from "@/components/Navbar";
 import { useSearchParams } from "next/navigation";
+import LocationLink from "@/components/LocationLink";
 
 type Event = {
   id: string;
@@ -58,7 +59,7 @@ function formatDistance(km: number): string {
 export default function EventsPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
+      <div className="min-h-screen bg-[#fbfbfd]">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           <div className="text-zinc-500">Loading...</div>
@@ -227,7 +228,7 @@ function EventsContent() {
   }, [events, locationSearch, searchQuery, userLocation, sortByDistance, maxDistance, skillFilter]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
+    <div className="min-h-screen bg-[#fbfbfd]">
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-6 py-8">
@@ -295,7 +296,7 @@ function EventsContent() {
                 ? "bg-emerald-500 text-white"
                 : locationStatus === "error"
                 ? "bg-red-100 text-red-700 border border-red-300"
-                : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 hover:text-emerald-600"
+                : "bg-white text-zinc-700 border border-zinc-200 hover:border-emerald-500 hover:text-emerald-600"
             }`}
           >
             {locationStatus === "loading" ? (
@@ -343,7 +344,7 @@ function EventsContent() {
                   className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
                     maxDistance === km
                       ? "bg-emerald-500 text-white"
-                      : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500"
+                      : "bg-white text-zinc-600 border border-zinc-200 hover:border-emerald-500"
                   }`}
                 >
                   {km}km
@@ -363,7 +364,7 @@ function EventsContent() {
 
         {/* Sport Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
-          <span className="text-zinc-600 dark:text-zinc-400 font-medium">
+          <span className="text-zinc-600 font-medium">
             Sport:
           </span>
           <div className="flex flex-wrap gap-2">
@@ -372,7 +373,7 @@ function EventsContent() {
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 sportFilter === ""
                   ? "bg-emerald-500 text-white"
-                  : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500"
+                  : "bg-white text-zinc-700 border border-zinc-200 hover:border-emerald-500"
               }`}
             >
               All Sports
@@ -394,7 +395,7 @@ function EventsContent() {
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   sportFilter === sport.id
                     ? "bg-emerald-500 text-white"
-                    : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500"
+                    : "bg-white text-zinc-700 border border-zinc-200 hover:border-emerald-500"
                 }`}
               >
                 {sport.icon} {sport.label}
@@ -405,7 +406,7 @@ function EventsContent() {
 
         {/* Skill Level Filter */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
-          <span className="text-zinc-600 dark:text-zinc-400 font-medium">
+          <span className="text-zinc-600 font-medium">
             Level:
           </span>
           <div className="flex flex-wrap gap-2">
@@ -414,7 +415,7 @@ function EventsContent() {
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 skillFilter === ""
                   ? "bg-emerald-500 text-white"
-                  : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500"
+                  : "bg-white text-zinc-700 border border-zinc-200 hover:border-emerald-500"
               }`}
             >
               All Levels
@@ -430,7 +431,7 @@ function EventsContent() {
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   skillFilter === level.id
                     ? "bg-emerald-500 text-white"
-                    : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500"
+                    : "bg-white text-zinc-700 border border-zinc-200 hover:border-emerald-500"
                 }`}
               >
                 {level.label}
@@ -441,12 +442,12 @@ function EventsContent() {
 
         {/* Results Count */}
         <div className="mb-4">
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-zinc-600">
             {loading ? (
               "Loading..."
             ) : (
               <>
-                <span className="font-semibold text-zinc-900 dark:text-white">
+                <span className="font-semibold text-zinc-900">
                   {filteredEvents.length}
                 </span>{" "}
                 {filteredEvents.length === 1 ? "event" : "events"} found
@@ -466,22 +467,22 @@ function EventsContent() {
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 p-5 animate-pulse"
+                className="bg-white rounded-xl border border-zinc-200 p-5 animate-pulse"
               >
-                <div className="h-6 bg-zinc-200 dark:bg-zinc-700 rounded w-20 mb-4"></div>
-                <div className="h-6 bg-zinc-200 dark:bg-zinc-700 rounded w-3/4 mb-3"></div>
-                <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-full mb-2"></div>
-                <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-2/3"></div>
+                <div className="h-6 bg-zinc-200 rounded w-20 mb-4"></div>
+                <div className="h-6 bg-zinc-200 rounded w-3/4 mb-3"></div>
+                <div className="h-4 bg-zinc-200 rounded w-full mb-2"></div>
+                <div className="h-4 bg-zinc-200 rounded w-2/3"></div>
               </div>
             ))}
           </div>
         ) : filteredEvents.length === 0 ? (
-          <div className="text-center py-16 bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700">
+          <div className="text-center py-16 bg-white rounded-2xl border border-zinc-200">
             <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">
+            <h3 className="text-xl font-semibold text-zinc-900 mb-2">
               No events found
             </h3>
-            <p className="text-zinc-500 dark:text-zinc-400 mb-6">
+            <p className="text-zinc-500 mb-6">
               {maxDistance
                 ? `No events within ${maxDistance}km. Try increasing the distance or`
                 : locationSearch || searchQuery
@@ -526,21 +527,21 @@ function EventCard({ event }: { event: Event }) {
   return (
     <Link
       href={`/events/${event.id}`}
-      className="group block bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 transition-all overflow-hidden"
+      className="group block bg-white rounded-2xl border border-zinc-200 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 transition-all overflow-hidden"
     >
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-sm font-medium rounded-full capitalize">
+            <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-full capitalize">
               {event.sport_type}
             </span>
             {event.skill_level && event.skill_level !== "all" && (
-              <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs font-medium rounded-full capitalize">
+              <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full capitalize">
                 {event.skill_level}
               </span>
             )}
             {event.distance !== undefined && (
-              <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full">
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
                 {formatDistance(event.distance)}
               </span>
             )}
@@ -560,16 +561,21 @@ function EventCard({ event }: { event: Event }) {
           </span>
         </div>
 
-        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-3 group-hover:text-emerald-600 transition-colors">
+        <h3 className="text-lg font-semibold text-zinc-900 mb-3 group-hover:text-emerald-600 transition-colors">
           {event.title}
         </h3>
 
         <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
-            <span>📍</span>
-            <span className="truncate">{event.location}</span>
+          <div className="flex items-center gap-2 text-zinc-600">
+            <LocationLink
+              location={event.location}
+              latitude={event.latitude}
+              longitude={event.longitude}
+              className="text-zinc-600"
+              asButton={true}
+            />
           </div>
-          <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
+          <div className="flex items-center gap-2 text-zinc-600">
             <span>📅</span>
             <span>
               {formattedDate} at {formattedTime}
@@ -578,17 +584,17 @@ function EventCard({ event }: { event: Event }) {
         </div>
 
         {event.description && (
-          <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2">
+          <p className="mt-3 text-sm text-zinc-500 line-clamp-2">
             {event.description}
           </p>
         )}
 
-        <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-700">
+        <div className="mt-4 pt-4 border-t border-zinc-100">
           <div
             className={`w-full py-2 text-center rounded-lg font-medium transition-colors ${
               isFull
-                ? "bg-zinc-100 dark:bg-zinc-700 text-zinc-500"
-                : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/50"
+                ? "bg-zinc-100 text-zinc-500"
+                : "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100"
             }`}
           >
             {isFull ? "Event Full" : "View Details →"}

@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import Navbar from "@/components/Navbar";
+import LocationLink from "@/components/LocationLink";
 
 type Event = {
   id: string;
@@ -15,10 +16,13 @@ type Event = {
   sport_type: string;
   location: string;
   datetime: string;
+  duration: number;
   max_participants: number;
   creator_id: string;
   created_at: string;
   skill_level: string;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 type ParticipantInfo = {
@@ -377,7 +381,7 @@ export default function EventDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
+      <div className="min-h-screen bg-[#fbfbfd]">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           <div className="text-zinc-500">Loading...</div>
@@ -388,7 +392,7 @@ export default function EventDetailPage() {
 
   if (error || !event) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
+      <div className="min-h-screen bg-[#fbfbfd]">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
@@ -431,14 +435,14 @@ export default function EventDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
+    <div className="min-h-screen bg-[#fbfbfd]">
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-6 py-8">
         {/* Back link */}
         <Link
           href="/events"
-          className="inline-flex items-center text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 mb-6 font-medium"
+          className="inline-flex items-center text-zinc-600 hover:text-emerald-600 mb-6 font-medium"
         >
           ← Back to events
         </Link>
@@ -470,13 +474,25 @@ export default function EventDetailPage() {
 
                 <div className="flex flex-wrap gap-4 text-white/90">
                   <div className="flex items-center gap-2">
-                    <span>📍</span>
-                    <span>{event.location}</span>
+                    <LocationLink
+                      location={event.location}
+                      latitude={event.latitude}
+                      longitude={event.longitude}
+                      className="text-white/90 hover:text-white"
+                    />
                   </div>
                   <div className="flex items-center gap-2">
                     <span>📅</span>
                     <span>
                       {formattedDate} at {formattedTime}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>⏱️</span>
+                    <span>
+                      {event.duration >= 60
+                        ? `${event.duration / 60} hour${event.duration > 60 ? "s" : ""}`
+                        : `${event.duration} min`}
                     </span>
                   </div>
                 </div>
@@ -485,19 +501,19 @@ export default function EventDetailPage() {
 
             {/* Description */}
             {event.description && (
-              <div className="bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-6">
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-3 flex items-center gap-2">
+              <div className="bg-white rounded-2xl border border-zinc-200 p-6">
+                <h2 className="text-lg font-semibold text-zinc-900 mb-3 flex items-center gap-2">
                   <span>📝</span> About this event
                 </h2>
-                <p className="text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">
+                <p className="text-zinc-600 whitespace-pre-wrap">
                   {event.description}
                 </p>
               </div>
             )}
 
             {/* Comments */}
-            <div className="bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-6">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
+            <div className="bg-white rounded-2xl border border-zinc-200 p-6">
+              <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
                 <span>💬</span> Discussion ({comments.length})
               </h2>
 
@@ -524,7 +540,7 @@ export default function EventDetailPage() {
                         onChange={(e) => setNewComment(e.target.value)}
                         placeholder="Ask a question or leave a comment..."
                         rows={2}
-                        className="w-full px-4 py-2 border border-zinc-200 dark:border-zinc-600 rounded-xl bg-zinc-50 dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+                        className="w-full px-4 py-2 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
                       />
                       <div className="flex justify-end mt-2">
                         <button
@@ -539,7 +555,7 @@ export default function EventDetailPage() {
                   </div>
                 </form>
               ) : (
-                <p className="text-center text-sm text-zinc-500 mb-4 py-2 bg-zinc-50 dark:bg-zinc-700/50 rounded-lg">
+                <p className="text-center text-sm text-zinc-500 mb-4 py-2 bg-zinc-50 rounded-lg">
                   <Link href="/login" className="text-emerald-600 hover:underline">
                     Log in
                   </Link>{" "}
@@ -575,7 +591,7 @@ export default function EventDetailPage() {
                         <div className="flex items-center gap-2">
                           <Link
                             href={`/users/${comment.user_id}`}
-                            className="font-medium text-zinc-900 dark:text-white hover:text-emerald-600"
+                            className="font-medium text-zinc-900 hover:text-emerald-600"
                           >
                             {comment.user_name || "Anonymous"}
                           </Link>
@@ -588,7 +604,7 @@ export default function EventDetailPage() {
                             })}
                           </span>
                         </div>
-                        <p className="text-zinc-600 dark:text-zinc-400 mt-1">
+                        <p className="text-zinc-600 mt-1">
                           {comment.content}
                         </p>
                       </div>
@@ -599,9 +615,9 @@ export default function EventDetailPage() {
             </div>
 
             {/* Participants */}
-            <div className="bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-6">
+            <div className="bg-white rounded-2xl border border-zinc-200 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-zinc-900 flex items-center gap-2">
                   <span>👥</span> Participants
                 </h2>
                 <span
@@ -620,7 +636,7 @@ export default function EventDetailPage() {
               </div>
 
               {participants.length === 0 ? (
-                <p className="text-zinc-500 dark:text-zinc-400 text-center py-4">
+                <p className="text-zinc-500 text-center py-4">
                   No one has joined yet. Be the first!
                 </p>
               ) : (
@@ -628,7 +644,7 @@ export default function EventDetailPage() {
                   {participants.map((participant) => (
                     <div
                       key={participant.id}
-                      className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-700/50 rounded-xl"
+                      className="flex items-center gap-3 p-3 bg-zinc-50 rounded-xl"
                     >
                       <Link
                         href={`/users/${participant.user_id}`}
@@ -648,7 +664,7 @@ export default function EventDetailPage() {
                           </div>
                         )}
                         <div>
-                          <p className="font-medium text-zinc-900 dark:text-white">
+                          <p className="font-medium text-zinc-900">
                             {participant.name || "Anonymous"}
                             {participant.user_id === user?.id && (
                               <span className="ml-2 text-xs text-emerald-600">
@@ -664,13 +680,13 @@ export default function EventDetailPage() {
                         (isJoined || isCreator) && (
                           isPastEvent ? (
                             existingReviews.includes(participant.user_id) ? (
-                              <span className="text-xs text-zinc-400 px-2 py-1 bg-zinc-200 dark:bg-zinc-600 rounded-full">
+                              <span className="text-xs text-zinc-400 px-2 py-1 bg-zinc-200 rounded-full">
                                 Rated
                               </span>
                             ) : (
                               <button
                                 onClick={() => openReviewModal(participant)}
-                                className="text-xs text-emerald-600 hover:text-emerald-700 px-3 py-1 border border-emerald-500 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                                className="text-xs text-emerald-600 hover:text-emerald-700 px-3 py-1 border border-emerald-500 rounded-full hover:bg-emerald-50 transition-colors"
                               >
                                 Rate
                               </button>
@@ -684,13 +700,13 @@ export default function EventDetailPage() {
 
               {/* Rating info for upcoming events */}
               {!isPastEvent && user && participants.length > 0 && (isJoined || isCreator) && (
-                <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-3 text-center italic">
+                <p className="text-xs text-zinc-400 mt-3 text-center italic">
                   Rating will be available after the event ends
                 </p>
               )}
 
               {/* Progress bar */}
-              <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+              <div className="mt-4 pt-4 border-t border-zinc-200">
                 <div className="flex justify-between text-sm text-zinc-500 mb-2">
                   <span>
                     {participants.length} / {event.max_participants} joined
@@ -702,7 +718,7 @@ export default function EventDetailPage() {
                     %
                   </span>
                 </div>
-                <div className="h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${
                       spotsLeft <= 0
@@ -726,8 +742,8 @@ export default function EventDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Host Card */}
-            <div className="bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-6">
-              <h2 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-4">
+            <div className="bg-white rounded-2xl border border-zinc-200 p-6">
+              <h2 className="text-sm font-medium text-zinc-500 mb-4">
                 Hosted by
               </h2>
               <div className="flex items-center gap-3">
@@ -749,7 +765,7 @@ export default function EventDetailPage() {
                     </div>
                   )}
                   <div>
-                    <p className="font-semibold text-zinc-900 dark:text-white">
+                    <p className="font-semibold text-zinc-900">
                       {host?.name || "Event Host"}
                       {isCreator && (
                         <span className="ml-2 text-xs text-emerald-600">
@@ -767,7 +783,7 @@ export default function EventDetailPage() {
                   host && (
                     isPastEvent ? (
                       existingReviews.includes(host.id) ? (
-                        <span className="text-xs text-zinc-400 px-2 py-1 bg-zinc-200 dark:bg-zinc-600 rounded-full">
+                        <span className="text-xs text-zinc-400 px-2 py-1 bg-zinc-200 rounded-full">
                           Rated
                         </span>
                       ) : (
@@ -780,7 +796,7 @@ export default function EventDetailPage() {
                               avatar_url: host.avatar_url,
                             })
                           }
-                          className="text-xs text-emerald-600 hover:text-emerald-700 px-3 py-1 border border-emerald-500 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                          className="text-xs text-emerald-600 hover:text-emerald-700 px-3 py-1 border border-emerald-500 rounded-full hover:bg-emerald-50 transition-colors"
                         >
                           Rate
                         </button>
@@ -791,7 +807,7 @@ export default function EventDetailPage() {
             </div>
 
             {/* Action Card */}
-            <div className="bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-6">
+            <div className="bg-white rounded-2xl border border-zinc-200 p-6">
               {isCreator ? (
                 <div className="space-y-3">
                   {!isPastEvent && (
@@ -806,13 +822,13 @@ export default function EventDetailPage() {
                   {!showDeleteConfirm ? (
                     <button
                       onClick={() => setShowDeleteConfirm(true)}
-                      className="w-full py-3 border border-red-300 dark:border-red-800 text-red-600 rounded-xl font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      className="w-full py-3 border border-red-300 text-red-600 rounded-xl font-medium hover:bg-red-50 transition-colors"
                     >
                       Delete Event
                     </button>
                   ) : (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-                      <p className="text-red-700 dark:text-red-300 text-sm mb-3">
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                      <p className="text-red-700 text-sm mb-3">
                         Delete this event? This cannot be undone.
                       </p>
                       <div className="flex gap-2">
@@ -826,7 +842,7 @@ export default function EventDetailPage() {
                         <button
                           onClick={() => setShowDeleteConfirm(false)}
                           disabled={deleting}
-                          className="flex-1 py-2 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-lg text-sm font-medium disabled:opacity-50"
+                          className="flex-1 py-2 border border-zinc-300 text-zinc-700 rounded-lg text-sm font-medium disabled:opacity-50"
                         >
                           Cancel
                         </button>
@@ -836,15 +852,15 @@ export default function EventDetailPage() {
                 </div>
               ) : isJoined ? (
                 <div className="space-y-3">
-                  <div className="text-center py-2 px-4 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl">
-                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                  <div className="text-center py-2 px-4 bg-emerald-50 rounded-xl">
+                    <span className="text-emerald-600 font-medium">
                       ✓ You&apos;re going!
                     </span>
                   </div>
                   <button
                     onClick={handleLeave}
                     disabled={joining}
-                    className="w-full py-3 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                    className="w-full py-3 border border-zinc-300 text-zinc-700 rounded-xl font-medium hover:bg-zinc-50 transition-colors disabled:opacity-50"
                   >
                     {joining ? "Leaving..." : "Leave Event"}
                   </button>
@@ -852,7 +868,7 @@ export default function EventDetailPage() {
               ) : isFull ? (
                 <div className="text-center py-4">
                   <div className="text-4xl mb-2">😔</div>
-                  <p className="text-zinc-500 dark:text-zinc-400 font-medium">
+                  <p className="text-zinc-500 font-medium">
                     This event is full
                   </p>
                 </div>
@@ -879,7 +895,7 @@ export default function EventDetailPage() {
             {/* Share Button */}
             <button
               onClick={handleShare}
-              className="w-full py-3 bg-zinc-100 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-2xl font-medium hover:bg-zinc-200 dark:hover:bg-zinc-600 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 bg-zinc-100 text-zinc-700 rounded-2xl font-medium hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2"
             >
               {copied ? (
                 <>
@@ -899,32 +915,40 @@ export default function EventDetailPage() {
             </button>
 
             {/* Event Info */}
-            <div className="bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-6">
-              <h2 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-4">
+            <div className="bg-white rounded-2xl border border-zinc-200 p-6">
+              <h2 className="text-sm font-medium text-zinc-500 mb-4">
                 Event Details
               </h2>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-zinc-500">Sport</span>
-                  <span className="font-medium text-zinc-900 dark:text-white capitalize">
+                  <span className="font-medium text-zinc-900 capitalize">
                     {event.sport_type}
                   </span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-zinc-500">Duration</span>
+                  <span className="font-medium text-zinc-900">
+                    {event.duration >= 60
+                      ? `${event.duration / 60} hour${event.duration > 60 ? "s" : ""}`
+                      : `${event.duration} min`}
+                  </span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-zinc-500">Skill Level</span>
-                  <span className="font-medium text-zinc-900 dark:text-white capitalize">
+                  <span className="font-medium text-zinc-900 capitalize">
                     {event.skill_level === "all" ? "All Levels" : event.skill_level}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-500">Max participants</span>
-                  <span className="font-medium text-zinc-900 dark:text-white">
+                  <span className="font-medium text-zinc-900">
                     {event.max_participants}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-500">Created</span>
-                  <span className="font-medium text-zinc-900 dark:text-white">
+                  <span className="font-medium text-zinc-900">
                     {new Date(event.created_at).toLocaleDateString()}
                   </span>
                 </div>
@@ -937,14 +961,14 @@ export default function EventDetailPage() {
       {/* Review Modal */}
       {showReviewModal && reviewingUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-zinc-800 rounded-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-zinc-900 mb-4">
               Rate {reviewingUser.name || "Participant"}
             </h3>
 
             {/* Star Rating */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              <label className="block text-sm font-medium text-zinc-700 mb-2">
                 Rating
               </label>
               <div className="flex gap-2">
@@ -955,7 +979,7 @@ export default function EventDetailPage() {
                     className={`text-3xl transition-colors ${
                       star <= reviewRating
                         ? "text-yellow-500"
-                        : "text-zinc-300 dark:text-zinc-600"
+                        : "text-zinc-300"
                     }`}
                   >
                     ★
@@ -966,14 +990,14 @@ export default function EventDetailPage() {
 
             {/* Comment */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              <label className="block text-sm font-medium text-zinc-700 mb-2">
                 Comment (optional)
               </label>
               <textarea
                 value={reviewComment}
                 onChange={(e) => setReviewComment(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 placeholder="How was your experience with this person?"
               />
             </div>
@@ -990,7 +1014,7 @@ export default function EventDetailPage() {
               <button
                 onClick={() => setShowReviewModal(false)}
                 disabled={submittingReview}
-                className="px-6 py-3 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-xl font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors"
+                className="px-6 py-3 border border-zinc-300 text-zinc-700 rounded-xl font-medium hover:bg-zinc-50 transition-colors"
               >
                 Cancel
               </button>

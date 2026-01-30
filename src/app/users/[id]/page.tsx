@@ -158,7 +158,7 @@ export default function PublicProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
+      <div className="min-h-screen bg-[#fbfbfd]">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           <div className="text-zinc-500">Loading...</div>
@@ -169,7 +169,7 @@ export default function PublicProfilePage() {
 
   if (error || !profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
+      <div className="min-h-screen bg-[#fbfbfd]">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
@@ -187,12 +187,12 @@ export default function PublicProfilePage() {
   const isOwnProfile = currentUser?.id === userId;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
+    <div className="min-h-screen bg-[#fbfbfd]">
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-6 py-8">
         {/* Profile Header */}
-        <div className="bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-8 mb-6">
+        <div className="bg-white rounded-2xl border border-zinc-200 p-8 mb-6">
           <div className="flex flex-col md:flex-row items-center gap-6">
             {/* Avatar */}
             {profile.avatar_url ? (
@@ -210,27 +210,27 @@ export default function PublicProfilePage() {
             )}
 
             <div className="text-center md:text-left flex-1">
-              <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">
+              <h1 className="text-3xl font-bold text-zinc-900 mb-2">
                 {profile.name || "Anonymous User"}
               </h1>
 
               {/* Stats */}
               <div className="flex flex-wrap justify-center md:justify-start gap-6 mt-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-zinc-900 dark:text-white">
+                  <div className="text-2xl font-bold text-zinc-900">
                     {hostedEvents.length}
                   </div>
                   <div className="text-sm text-zinc-500">Events Hosted</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-zinc-900 dark:text-white">
+                  <div className="text-2xl font-bold text-zinc-900">
                     {joinedEvents.length}
                   </div>
                   <div className="text-sm text-zinc-500">Events Joined</div>
                 </div>
                 {averageRating && (
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-zinc-900 dark:text-white flex items-center justify-center gap-1">
+                    <div className="text-2xl font-bold text-zinc-900 flex items-center justify-center gap-1">
                       <span className="text-yellow-500">★</span>
                       {averageRating.toFixed(1)}
                     </div>
@@ -245,7 +245,7 @@ export default function PublicProfilePage() {
             {isOwnProfile && (
               <Link
                 href="/profile"
-                className="px-4 py-2 border border-zinc-300 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors"
+                className="px-4 py-2 border border-zinc-300 text-zinc-700 rounded-lg hover:bg-zinc-50 transition-colors"
               >
                 Edit Profile
               </Link>
@@ -255,8 +255,8 @@ export default function PublicProfilePage() {
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Past Events Hosted */}
-          <div className="bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-6">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-zinc-200 p-6">
+            <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
               <span>🎯</span> Events Hosted
             </h2>
             {hostedEvents.length === 0 ? (
@@ -267,9 +267,9 @@ export default function PublicProfilePage() {
                   <Link
                     key={event.id}
                     href={`/events/${event.id}`}
-                    className="block p-3 bg-zinc-50 dark:bg-zinc-700/50 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                    className="block p-3 bg-zinc-50 rounded-xl hover:bg-zinc-100 transition-colors"
                   >
-                    <div className="font-medium text-zinc-900 dark:text-white">
+                    <div className="font-medium text-zinc-900">
                       {event.title}
                     </div>
                     <div className="text-sm text-zinc-500 flex items-center gap-2 mt-1">
@@ -284,8 +284,8 @@ export default function PublicProfilePage() {
           </div>
 
           {/* Past Events Joined */}
-          <div className="bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-6">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-zinc-200 p-6">
+            <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
               <span>🏃</span> Events Joined
             </h2>
             {joinedEvents.length === 0 ? (
@@ -296,9 +296,9 @@ export default function PublicProfilePage() {
                   <Link
                     key={event.id}
                     href={`/events/${event.id}`}
-                    className="block p-3 bg-zinc-50 dark:bg-zinc-700/50 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                    className="block p-3 bg-zinc-50 rounded-xl hover:bg-zinc-100 transition-colors"
                   >
-                    <div className="font-medium text-zinc-900 dark:text-white">
+                    <div className="font-medium text-zinc-900">
                       {event.title}
                     </div>
                     <div className="text-sm text-zinc-500 flex items-center gap-2 mt-1">
@@ -314,8 +314,8 @@ export default function PublicProfilePage() {
         </div>
 
         {/* Reviews */}
-        <div className="bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-6 mt-6">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-2xl border border-zinc-200 p-6 mt-6">
+          <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
             <span>⭐</span> Reviews ({reviews.length})
           </h2>
           {reviews.length === 0 ? (
@@ -325,7 +325,7 @@ export default function PublicProfilePage() {
               {reviews.map((review) => (
                 <div
                   key={review.id}
-                  className="p-4 bg-zinc-50 dark:bg-zinc-700/50 rounded-xl"
+                  className="p-4 bg-zinc-50 rounded-xl"
                 >
                   <div className="flex items-start gap-3">
                     {review.reviewer?.avatar_url ? (
@@ -343,7 +343,7 @@ export default function PublicProfilePage() {
                     )}
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <div className="font-medium text-zinc-900 dark:text-white">
+                        <div className="font-medium text-zinc-900">
                           {review.reviewer?.name || "Anonymous"}
                         </div>
                         <div className="flex items-center gap-1 text-yellow-500">
@@ -360,7 +360,7 @@ export default function PublicProfilePage() {
                         </div>
                       )}
                       {review.comment && (
-                        <p className="text-zinc-600 dark:text-zinc-400 mt-2">
+                        <p className="text-zinc-600 mt-2">
                           {review.comment}
                         </p>
                       )}

@@ -25,14 +25,12 @@ export default function SignupPage() {
     const email = formData.get("email") as string;
     const name = formData.get("name") as string;
 
-    // Validate passwords match
     if (password !== confirmPassword) {
       setPasswordError("Passwords do not match");
       setLoading(false);
       return;
     }
 
-    // Validate password length
     if (password.length < 6) {
       setPasswordError("Password must be at least 6 characters");
       setLoading(false);
@@ -57,7 +55,6 @@ export default function SignupPage() {
       return;
     }
 
-    // Create profile in profiles table
     if (data.user) {
       await supabase.from("profiles").upsert({
         id: data.user.id,
@@ -66,31 +63,30 @@ export default function SignupPage() {
       }, { onConflict: "id" });
     }
 
-    // Redirect to login or dashboard
     router.push("/login?message=Check your email to confirm your account");
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-900 px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-[#fbfbfd] px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="text-3xl font-bold text-emerald-600">
+          <Link href="/" className="text-2xl font-semibold text-zinc-900 hover:text-emerald-600 transition-colors">
             MatUp
           </Link>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-white mt-6">
+          <h1 className="text-3xl font-semibold text-zinc-900 mt-8 tracking-tight">
             Create your account
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400 mt-2">
+          <p className="text-zinc-500 mt-2">
             Start finding fitness partners today
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white dark:bg-zinc-800 p-8 rounded-xl border border-zinc-200 dark:border-zinc-700"
+          className="bg-white p-8 rounded-2xl border border-zinc-200 shadow-sm"
         >
           {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm">
               {error}
             </div>
           )}
@@ -99,7 +95,7 @@ export default function SignupPage() {
             <div>
               <label
                 htmlFor="name"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1"
+                className="block text-sm font-medium text-zinc-700 mb-1.5"
               >
                 Full name
               </label>
@@ -108,7 +104,7 @@ export default function SignupPage() {
                 id="name"
                 name="name"
                 required
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all"
                 placeholder="John Doe"
               />
             </div>
@@ -116,7 +112,7 @@ export default function SignupPage() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1"
+                className="block text-sm font-medium text-zinc-700 mb-1.5"
               >
                 Email
               </label>
@@ -125,7 +121,7 @@ export default function SignupPage() {
                 id="email"
                 name="email"
                 required
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all"
                 placeholder="you@example.com"
               />
             </div>
@@ -133,7 +129,7 @@ export default function SignupPage() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1"
+                className="block text-sm font-medium text-zinc-700 mb-1.5"
               >
                 Password
               </label>
@@ -149,13 +145,13 @@ export default function SignupPage() {
                   }}
                   required
                   minLength={6}
-                  className="w-full px-4 py-2 pr-12 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full px-4 py-3 pr-12 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
                 >
                   {showPassword ? (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -169,7 +165,7 @@ export default function SignupPage() {
                   )}
                 </button>
               </div>
-              <p className="text-xs text-zinc-500 mt-1">
+              <p className="text-xs text-zinc-500 mt-1.5">
                 Must be at least 6 characters
               </p>
             </div>
@@ -177,7 +173,7 @@ export default function SignupPage() {
             <div>
               <label
                 htmlFor="confirmPassword"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1"
+                className="block text-sm font-medium text-zinc-700 mb-1.5"
               >
                 Confirm Password
               </label>
@@ -192,19 +188,19 @@ export default function SignupPage() {
                   }}
                   required
                   minLength={6}
-                  className={`w-full px-4 py-2 pr-12 border rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                  className={`w-full px-4 py-3 pr-12 border rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all ${
                     passwordError
                       ? "border-red-500"
                       : confirmPassword && password === confirmPassword
                       ? "border-emerald-500"
-                      : "border-zinc-300 dark:border-zinc-600"
+                      : "border-zinc-200"
                   }`}
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
                 >
                   {showConfirmPassword ? (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -219,27 +215,32 @@ export default function SignupPage() {
                 </button>
               </div>
               {passwordError && (
-                <p className="text-xs text-red-500 mt-1">{passwordError}</p>
+                <p className="text-xs text-red-500 mt-1.5">{passwordError}</p>
               )}
               {confirmPassword && password === confirmPassword && !passwordError && (
-                <p className="text-xs text-emerald-500 mt-1">✓ Passwords match</p>
+                <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Passwords match
+                </p>
               )}
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+              className="w-full py-3 bg-zinc-900 text-white rounded-xl font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
             >
               {loading ? "Creating account..." : "Create account"}
             </button>
           </div>
         </form>
 
-        <p className="text-center text-zinc-600 dark:text-zinc-400 mt-6">
+        <p className="text-center text-zinc-500 mt-6">
           Already have an account?{" "}
-          <Link href="/login" className="text-emerald-600 hover:underline">
-            Log in
+          <Link href="/login" className="text-emerald-600 hover:text-emerald-700 font-medium">
+            Sign in
           </Link>
         </p>
       </div>
