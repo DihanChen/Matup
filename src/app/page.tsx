@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
 
 const ACTIVITIES = [
   { icon: "🏃", label: "Running", color: "from-orange-400 to-red-500" },
@@ -24,31 +25,9 @@ export default function Home() {
         </div>
 
         {/* Navigation */}
-        <nav className="relative z-10 max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-emerald-600">
-            MatUp
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/events"
-              className="text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 font-medium"
-            >
-              Browse Events
-            </Link>
-            <Link
-              href="/login"
-              className="text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 font-medium"
-            >
-              Log In
-            </Link>
-            <Link
-              href="/signup"
-              className="px-5 py-2.5 bg-emerald-600 text-white rounded-full font-medium hover:bg-emerald-700 transition-all hover:scale-105"
-            >
-              Sign Up Free
-            </Link>
-          </div>
-        </nav>
+        <div className="relative z-50">
+          <Navbar />
+        </div>
 
         {/* Hero Content */}
         <main className="relative z-10 max-w-7xl mx-auto px-6 pt-16 pb-24">

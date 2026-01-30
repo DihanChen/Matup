@@ -23,6 +23,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [createdEvents, setCreatedEvents] = useState<Event[]>([]);
   const [joinedEvents, setJoinedEvents] = useState<Event[]>([]);
+  const [pastEvents, setPastEvents] = useState<Event[]>([]);
+  const [showPastEvents, setShowPastEvents] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -66,6 +68,42 @@ export default function DashboardPage() {
 
         setJoinedEvents(joined || []);
       }
+
+      // Fetch past events (both created and joined)
+      const { data: pastCreated } = await supabase
+        .from("events")
+        .select("*")
+        .eq("creator_id", user.id)
+        .lt("datetime", new Date().toISOString())
+        .order("datetime", { ascending: false })
+        .limit(10);
+
+      const { data: pastParticipations } = await supabase
+        .from("event_participants")
+        .select("event_id")
+        .eq("user_id", user.id);
+
+      let allPastEvents = pastCreated || [];
+
+      if (pastParticipations && pastParticipations.length > 0) {
+        const pastEventIds = pastParticipations.map((p) => p.event_id);
+        const { data: pastJoined } = await supabase
+          .from("events")
+          .select("*")
+          .in("id", pastEventIds)
+          .neq("creator_id", user.id)
+          .lt("datetime", new Date().toISOString())
+          .order("datetime", { ascending: false })
+          .limit(10);
+
+        if (pastJoined) {
+          allPastEvents = [...allPastEvents, ...pastJoined];
+        }
+      }
+
+      // Sort by date and remove duplicates
+      allPastEvents.sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
+      setPastEvents(allPastEvents.slice(0, 10));
 
       setLoading(false);
     }
@@ -168,7 +206,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Events I've Joined */}
-        <section>
+        <section className="mb-12">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
               Events I&apos;ve Joined
@@ -198,12 +236,48 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
+
+        {/* Past Events */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
+              Past Events
+            </h2>
+            <button
+              onClick={() => setShowPastEvents(!showPastEvents)}
+              className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+            >
+              {showPastEvents ? "Hide" : `Show (${pastEvents.length})`}
+            </button>
+          </div>
+
+          {showPastEvents && (
+            pastEvents.length === 0 ? (
+              <div className="bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 p-8 text-center">
+                <p className="text-zinc-500 dark:text-zinc-400">
+                  No past events yet. Your event history will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {pastEvents.map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    isCreator={event.creator_id === user?.id}
+                    isPast
+                  />
+                ))}
+              </div>
+            )
+          )}
+        </section>
       </main>
     </div>
   );
 }
 
-function EventCard({ event, isCreator }: { event: Event; isCreator?: boolean }) {
+function EventCard({ event, isCreator, isPast }: { event: Event; isCreator?: boolean; isPast?: boolean }) {
   const date = new Date(event.datetime);
   const formattedDate = date.toLocaleDateString("en-US", {
     weekday: "short",
@@ -218,15 +292,22 @@ function EventCard({ event, isCreator }: { event: Event; isCreator?: boolean }) 
   return (
     <Link
       href={`/events/${event.id}`}
-      className="block bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 transition-colors p-4"
+      className={`block bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 transition-colors p-4 ${isPast ? "opacity-75" : ""}`}
     >
       <div className="flex items-start justify-between mb-2">
-        <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs rounded capitalize">
-          {event.sport_type}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs rounded capitalize">
+            {event.sport_type}
+          </span>
+          {isPast && (
+            <span className="px-2 py-1 bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 text-xs rounded">
+              Completed
+            </span>
+          )}
+        </div>
         {isCreator && (
           <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs rounded">
-            Hosting
+            Hosted
           </span>
         )}
       </div>

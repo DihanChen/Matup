@@ -19,6 +19,7 @@ type Event = {
   participant_count: number;
   latitude: number | null;
   longitude: number | null;
+  skill_level: string;
   distance?: number; // calculated client-side
 };
 
@@ -83,6 +84,7 @@ function EventsContent() {
   const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [sortByDistance, setSortByDistance] = useState(false);
   const [maxDistance, setMaxDistance] = useState<number | null>(null); // in km
+  const [skillFilter, setSkillFilter] = useState("");
 
   // Get user's location
   function handleGetLocation() {
@@ -203,6 +205,13 @@ function EventsContent() {
       );
     }
 
+    // Filter by skill level
+    if (skillFilter) {
+      result = result.filter(
+        (event) => event.skill_level === skillFilter || event.skill_level === "all"
+      );
+    }
+
     // Sort by distance if enabled
     if (sortByDistance && userLocation) {
       result.sort((a, b) => {
@@ -215,7 +224,7 @@ function EventsContent() {
     }
 
     setFilteredEvents(result);
-  }, [events, locationSearch, searchQuery, userLocation, sortByDistance, maxDistance]);
+  }, [events, locationSearch, searchQuery, userLocation, sortByDistance, maxDistance, skillFilter]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
@@ -394,6 +403,42 @@ function EventsContent() {
           </div>
         </div>
 
+        {/* Skill Level Filter */}
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <span className="text-zinc-600 dark:text-zinc-400 font-medium">
+            Level:
+          </span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSkillFilter("")}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                skillFilter === ""
+                  ? "bg-emerald-500 text-white"
+                  : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500"
+              }`}
+            >
+              All Levels
+            </button>
+            {[
+              { id: "beginner", label: "Beginner" },
+              { id: "intermediate", label: "Intermediate" },
+              { id: "advanced", label: "Advanced" },
+            ].map((level) => (
+              <button
+                key={level.id}
+                onClick={() => setSkillFilter(level.id)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  skillFilter === level.id
+                    ? "bg-emerald-500 text-white"
+                    : "bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500"
+                }`}
+              >
+                {level.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Results Count */}
         <div className="mb-4">
           <p className="text-zinc-600 dark:text-zinc-400">
@@ -408,6 +453,7 @@ function EventsContent() {
                 {maxDistance && ` within ${maxDistance}km`}
                 {locationSearch && ` near "${locationSearch}"`}
                 {sportFilter && ` for ${sportFilter}`}
+                {skillFilter && ` (${skillFilter})`}
                 {sortByDistance && userLocation && " (sorted by distance)"}
               </>
             )}
@@ -484,10 +530,15 @@ function EventCard({ event }: { event: Event }) {
     >
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-sm font-medium rounded-full capitalize">
               {event.sport_type}
             </span>
+            {event.skill_level && event.skill_level !== "all" && (
+              <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs font-medium rounded-full capitalize">
+                {event.skill_level}
+              </span>
+            )}
             {event.distance !== undefined && (
               <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full">
                 {formatDistance(event.distance)}

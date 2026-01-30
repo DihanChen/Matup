@@ -31,6 +31,7 @@ type Event = {
   creator_id: string;
   latitude: number | null;
   longitude: number | null;
+  skill_level: string;
 };
 
 export default function EditEventPage() {
@@ -53,6 +54,7 @@ export default function EditEventPage() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [maxParticipants, setMaxParticipants] = useState(10);
+  const [skillLevel, setSkillLevel] = useState("all");
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
@@ -89,6 +91,12 @@ export default function EditEventPage() {
         return;
       }
 
+      // Check if event is in the past
+      if (new Date(eventData.datetime) < new Date()) {
+        router.push(`/events/${eventId}`);
+        return;
+      }
+
       setEvent(eventData);
 
       // Populate form fields
@@ -97,6 +105,7 @@ export default function EditEventPage() {
       setSportType(eventData.sport_type);
       setLocation(eventData.location);
       setMaxParticipants(eventData.max_participants);
+      setSkillLevel(eventData.skill_level || "all");
 
       // Parse datetime
       const dt = new Date(eventData.datetime);
@@ -156,6 +165,7 @@ export default function EditEventPage() {
         sport_type: sportType,
         location,
         datetime,
+        skill_level: skillLevel,
         max_participants: maxParticipants,
         latitude: coordinates?.lat || null,
         longitude: coordinates?.lng || null,
@@ -385,6 +395,28 @@ export default function EditEventPage() {
                     className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-600 rounded-xl bg-zinc-50 dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
+              </div>
+
+              {/* Skill Level */}
+              <div>
+                <label
+                  htmlFor="skill_level"
+                  className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                >
+                  Skill Level
+                </label>
+                <select
+                  id="skill_level"
+                  value={skillLevel}
+                  onChange={(e) => setSkillLevel(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 border border-zinc-200 dark:border-zinc-600 rounded-xl bg-zinc-50 dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                >
+                  <option value="all">All Levels Welcome</option>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
               </div>
 
               {/* Max Participants */}

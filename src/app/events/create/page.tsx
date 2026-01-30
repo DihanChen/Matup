@@ -80,6 +80,7 @@ export default function CreateEventPage() {
     const location = formData.get("location") as string;
     const date = formData.get("date") as string;
     const time = formData.get("time") as string;
+    const skillLevel = formData.get("skill_level") as string;
     const maxParticipants = parseInt(formData.get("max_participants") as string);
 
     const datetime = new Date(`${date}T${time}`).toISOString();
@@ -92,6 +93,7 @@ export default function CreateEventPage() {
       sport_type: sportType,
       location,
       datetime,
+      skill_level: skillLevel,
       max_participants: maxParticipants,
       creator_id: user?.id,
       latitude: coordinates?.lat || null,
@@ -250,8 +252,8 @@ export default function CreateEventPage() {
               </div>
             </div>
 
-            {/* Date and Time */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Date, Time, and Duration */}
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label
                   htmlFor="date"
@@ -282,6 +284,49 @@ export default function CreateEventPage() {
                   className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
+              <div>
+                <label
+                  htmlFor="duration"
+                  className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1"
+                >
+                  Duration
+                </label>
+                <select
+                  id="duration"
+                  name="duration"
+                  required
+                  className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                >
+                  <option value="30">30 min</option>
+                  <option value="45">45 min</option>
+                  <option value="60">1 hour</option>
+                  <option value="90">1.5 hours</option>
+                  <option value="120">2 hours</option>
+                  <option value="180">3 hours</option>
+                  <option value="240">4 hours</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Skill Level */}
+            <div>
+              <label
+                htmlFor="skill_level"
+                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1"
+              >
+                Skill Level
+              </label>
+              <select
+                id="skill_level"
+                name="skill_level"
+                required
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              >
+                <option value="all">All Levels Welcome</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
             </div>
 
             {/* Max Participants */}

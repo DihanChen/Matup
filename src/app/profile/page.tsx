@@ -34,6 +34,16 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
 
+  // Auto-dismiss message after 3 seconds
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
   useEffect(() => {
     const supabase = createClient();
 
@@ -193,6 +203,24 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-800">
+      {/* Success/Error Banner */}
+      {message && (
+        <div
+          className={`fixed top-0 left-0 right-0 z-50 px-4 py-3 text-center font-medium shadow-lg transition-all ${
+            message.type === "success"
+              ? "bg-emerald-500 text-white"
+              : "bg-red-500 text-white"
+          }`}
+        >
+          {message.text}
+          <button
+            onClick={() => setMessage(null)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-6 py-8">
@@ -230,9 +258,15 @@ export default function ProfilePage() {
                 title="Upload photo"
               >
                 {uploading ? (
-                  <span className="animate-spin">⏳</span>
+                  <svg className="animate-spin h-5 w-5 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
                 ) : (
-                  <span className="text-lg">📷</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-emerald-600">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+                  </svg>
                 )}
               </button>
               <input
@@ -274,7 +308,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Stats */}
-          <div className="relative mt-8 grid grid-cols-3 gap-4">
+          <div className="relative mt-8 grid grid-cols-2 gap-4">
             <div className="bg-white/10 backdrop-blur rounded-2xl p-4 text-center text-white">
               <div className="text-3xl font-bold">0</div>
               <div className="text-white/70 text-sm">Events Hosted</div>
@@ -283,24 +317,9 @@ export default function ProfilePage() {
               <div className="text-3xl font-bold">0</div>
               <div className="text-white/70 text-sm">Events Joined</div>
             </div>
-            <div className="bg-white/10 backdrop-blur rounded-2xl p-4 text-center text-white">
-              <div className="text-3xl font-bold">⭐</div>
-              <div className="text-white/70 text-sm">New Member</div>
-            </div>
           </div>
         </div>
 
-        {message && (
-          <div
-            className={`mb-6 p-4 rounded-xl text-sm font-medium ${
-              message.type === "success"
-                ? "bg-emerald-100 border border-emerald-200 text-emerald-700"
-                : "bg-red-100 border border-red-200 text-red-700"
-            }`}
-          >
-            {message.type === "success" ? "✅ " : "❌ "}{message.text}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info Card */}

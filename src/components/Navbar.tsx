@@ -34,6 +34,16 @@ export default function Navbar() {
     async function getUser() {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+
+      // Ensure profile is synced to profiles table
+      if (user) {
+        await supabase.from("profiles").upsert({
+          id: user.id,
+          name: user.user_metadata?.name || null,
+          avatar_url: user.user_metadata?.avatar_url || null,
+        }, { onConflict: "id" });
+      }
+
       setLoading(false);
     }
 
