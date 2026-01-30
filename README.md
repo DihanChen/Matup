@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MatUp Frontend
+
+A fitness partner matching platform where users can find workout partners, join fitness events, and build a trusted fitness community.
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **Package Manager:** npm
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+# Install dependencies
+npm install
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/
+│   ├── page.tsx           # Landing page
+│   ├── layout.tsx         # Root layout
+│   ├── globals.css        # Global styles
+│   ├── login/
+│   │   └── page.tsx       # Login page
+│   ├── signup/
+│   │   └── page.tsx       # Signup page
+│   ├── events/
+│   │   └── page.tsx       # Events listing
+│   ├── profile/           # User profiles (TODO)
+│   └── dashboard/         # User dashboard (TODO)
+├── components/            # Reusable components (TODO)
+└── lib/                   # Utilities, API client (TODO)
+```
+
+## Available Routes
+
+| Route | Description |
+|-------|-------------|
+| `/` | Landing page |
+| `/login` | User login |
+| `/signup` | User registration |
+| `/events` | Browse fitness events |
+
+## Development
+
+The app uses hot reload - changes to files automatically update in the browser.
+
+### Key files to know
+
+- `src/app/layout.tsx` - Global layout, metadata, fonts
+- `src/app/globals.css` - Tailwind config and global styles
+- `src/app/page.tsx` - Landing page
+
+### Adding a new page
+
+Create a folder with `page.tsx` inside `src/app/`:
+
+```
+src/app/my-new-page/page.tsx  →  /my-new-page
+```
+
+## MVP Roadmap
+
+- [ ] Supabase integration (auth + database)
+- [ ] User authentication (signup/login/logout)
+- [ ] User profiles
+- [ ] Create event form
+- [ ] Event detail page with join functionality
+- [ ] User dashboard
+- [ ] Basic ratings system
+- [ ] Deploy to Vercel
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+- [Supabase Documentation](https://supabase.com/docs)
