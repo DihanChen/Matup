@@ -34,6 +34,7 @@ type Event = {
   latitude: number | null;
   longitude: number | null;
   skill_level: string;
+  reminder_minutes: number | null;
 };
 
 export default function EditEventPage() {
@@ -58,6 +59,7 @@ export default function EditEventPage() {
   const [maxParticipants, setMaxParticipants] = useState(10);
   const [duration, setDuration] = useState(60);
   const [skillLevel, setSkillLevel] = useState("all");
+  const [reminderMinutes, setReminderMinutes] = useState<number | null>(null);
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
@@ -109,6 +111,7 @@ export default function EditEventPage() {
       setMaxParticipants(eventData.max_participants);
       setDuration(eventData.duration || 60);
       setSkillLevel(eventData.skill_level || "all");
+      setReminderMinutes(eventData.reminder_minutes);
 
       // Parse datetime
       const dt = new Date(eventData.datetime);
@@ -149,6 +152,7 @@ export default function EditEventPage() {
         max_participants: maxParticipants,
         latitude: coordinates?.lat || null,
         longitude: coordinates?.lng || null,
+        reminder_minutes: reminderMinutes,
       })
       .eq("id", eventId)
       .eq("creator_id", user?.id);
@@ -290,8 +294,8 @@ export default function EditEventPage() {
                 />
               </div>
 
-              {/* Date, Time, and Duration */}
-              <div className="grid grid-cols-3 gap-4">
+              {/* Date and Time */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label
                     htmlFor="date"
@@ -324,29 +328,31 @@ export default function EditEventPage() {
                     className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
-                <div>
-                  <label
-                    htmlFor="duration"
-                    className="block text-sm font-medium text-zinc-700 mb-2"
-                  >
-                    Duration
-                  </label>
-                  <select
-                    id="duration"
-                    value={duration}
-                    onChange={(e) => setDuration(parseInt(e.target.value))}
-                    required
-                    className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  >
-                    <option value="30">30 min</option>
-                    <option value="45">45 min</option>
-                    <option value="60">1 hour</option>
-                    <option value="90">1.5 hours</option>
-                    <option value="120">2 hours</option>
-                    <option value="180">3 hours</option>
-                    <option value="240">4 hours</option>
-                  </select>
-                </div>
+              </div>
+
+              {/* Duration */}
+              <div>
+                <label
+                  htmlFor="duration"
+                  className="block text-sm font-medium text-zinc-700 mb-2"
+                >
+                  Duration
+                </label>
+                <select
+                  id="duration"
+                  value={duration}
+                  onChange={(e) => setDuration(parseInt(e.target.value))}
+                  required
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                >
+                  <option value="30">30 min</option>
+                  <option value="45">45 min</option>
+                  <option value="60">1 hour</option>
+                  <option value="90">1.5 hours</option>
+                  <option value="120">2 hours</option>
+                  <option value="180">3 hours</option>
+                  <option value="240">4 hours</option>
+                </select>
               </div>
 
               {/* Skill Level */}
@@ -389,6 +395,32 @@ export default function EditEventPage() {
                   required
                   className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
+              </div>
+
+              {/* Reminder */}
+              <div>
+                <label
+                  htmlFor="reminder_minutes"
+                  className="block text-sm font-medium text-zinc-700 mb-2"
+                >
+                  Send Reminder
+                </label>
+                <select
+                  id="reminder_minutes"
+                  value={reminderMinutes ?? ""}
+                  onChange={(e) => setReminderMinutes(e.target.value ? parseInt(e.target.value) : null)}
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                >
+                  <option value="">No reminder</option>
+                  <option value="15">15 minutes before</option>
+                  <option value="30">30 minutes before</option>
+                  <option value="60">1 hour before</option>
+                  <option value="120">2 hours before</option>
+                  <option value="1440">1 day before</option>
+                </select>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Attendees will receive a push notification before the event
+                </p>
               </div>
 
               {/* Description */}

@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model PushSubscription {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  endpoint   String
+  keysP256dh String   @map("keys_p256dh")
+  keysAuth   String   @map("keys_auth")
+  latitude   Float?
+  longitude  Float?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, endpoint])
+  @@index([latitude, longitude])
+  @@map("push_subscriptions")
+}
+
+model EventReminder {
+  id        String   @id @default(uuid())
+  eventId   String   @unique @map("event_id")
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  @@map("event_reminders")
+}

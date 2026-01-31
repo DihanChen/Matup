@@ -374,7 +374,7 @@ export default function ProfilePage() {
               Select the activities you&apos;re interested in
             </p>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
               {ACTIVITIES.map((activity) => {
                 const isSelected = selectedActivities.includes(activity.id);
                 return (

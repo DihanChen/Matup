@@ -38,52 +38,52 @@ function FeaturedEventCard({
   participants: string;
 }) {
   return (
-    <div className={`w-[480px] flex-shrink-0 relative overflow-hidden rounded-3xl bg-gradient-to-br ${gradient} p-8`}>
+    <div className={`w-[300px] sm:w-[400px] md:w-[480px] h-[320px] sm:h-[340px] md:h-[360px] flex-shrink-0 relative overflow-hidden rounded-3xl bg-gradient-to-br ${gradient} p-6 sm:p-8`}>
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-8 right-8 text-6xl">{emoji1}</div>
         <div className="absolute bottom-8 left-8 text-5xl">{emoji2}</div>
       </div>
 
-      <div className="relative text-white">
-        <div className="inline-block px-3 py-1 bg-white/20 backdrop-blur rounded-full text-sm font-medium mb-4">
+      <div className="relative text-white h-full flex flex-col">
+        <div className="inline-block px-2 sm:px-3 py-1 bg-white/20 backdrop-blur rounded-full text-xs sm:text-sm font-medium mb-3 sm:mb-4 self-start">
           {badge}
         </div>
-        <h3 className="text-2xl font-bold mb-3">
+        <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 sm:mb-3 line-clamp-1">
           {title}
         </h3>
-        <p className="text-white/90 mb-6 leading-relaxed text-sm">
+        <p className="text-white/90 mb-4 leading-relaxed text-xs sm:text-sm line-clamp-2 flex-shrink-0">
           {description}
         </p>
 
-        <div className="space-y-2 mb-6 text-sm">
+        <div className="space-y-1.5 sm:space-y-2 mb-4 text-xs sm:text-sm flex-grow">
           <div className="flex items-center gap-2 text-white/90">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span>{location}</span>
+            <span className="truncate">{location}</span>
           </div>
           <div className="flex items-center gap-2 text-white/90">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <span>{date}</span>
+            <span className="truncate">{date}</span>
           </div>
           <div className="flex items-center gap-2 text-white/90">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
-            <span>{participants}</span>
+            <span className="truncate">{participants}</span>
           </div>
         </div>
 
         <Link
           href="/signup"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-zinc-900 rounded-full font-semibold hover:bg-white/90 transition-all duration-300 shadow-lg text-sm"
+          className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-white text-zinc-900 rounded-full font-semibold hover:bg-white/90 transition-all duration-300 shadow-lg text-xs sm:text-sm self-start mt-auto"
         >
           Join event
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
           </svg>
         </Link>
@@ -191,13 +191,21 @@ function FeaturedEventsCarousel() {
     },
   ];
 
+  // Get responsive card width based on screen size
+  const getCardWidth = () => {
+    if (typeof window === "undefined") return 480;
+    if (window.innerWidth < 640) return 300; // mobile
+    if (window.innerWidth < 768) return 400; // sm
+    return 480; // md+
+  };
+
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
     const handleScroll = () => {
       const scrollLeft = container.scrollLeft;
-      const cardWidth = 480 + 24; // card width + gap
+      const cardWidth = getCardWidth() + 24; // card width + gap
       const newIndex = Math.round(scrollLeft / cardWidth);
       setActiveIndex(newIndex);
     };
@@ -209,7 +217,7 @@ function FeaturedEventsCarousel() {
   const scrollToIndex = (index: number) => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    const cardWidth = 480 + 24; // card width + gap
+    const cardWidth = getCardWidth() + 24; // card width + gap
     container.scrollTo({
       left: index * cardWidth,
       behavior: "smooth",
@@ -308,7 +316,7 @@ export default function Home() {
       </section>
 
       {/* Featured Events Carousel */}
-      <section className="py-16 bg-gradient-to-b from-[#fbfbfd] to-white">
+      <section className="py-16 bg-zinc-100">
         <div className="max-w-[1400px] mx-auto px-6">
           <div className="text-center mb-8">
             <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full uppercase tracking-wide mb-3">
@@ -324,7 +332,7 @@ export default function Home() {
       </section>
 
       {/* Rewards & Achievements */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-white border-y border-zinc-200">
         <div className="max-w-[980px] mx-auto px-6">
           <div className="text-center mb-16">
             <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full uppercase tracking-wide mb-3">
@@ -435,7 +443,7 @@ export default function Home() {
       </section>
 
       {/* Community Photos */}
-      <section className="py-16 bg-white">
+      <section className="py-16 bg-zinc-50">
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-semibold text-zinc-900 tracking-tight mb-4">
@@ -446,32 +454,25 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="aspect-[3/4] rounded-2xl overflow-hidden">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            <div className="aspect-[3/4] rounded-xl sm:rounded-2xl overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=600&fit=crop"
+                src="https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=400&h=600&fit=crop"
                 alt="Group running together outdoors"
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
               />
             </div>
-            <div className="aspect-[3/4] rounded-2xl overflow-hidden">
+            <div className="aspect-[3/4] rounded-xl sm:rounded-2xl overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1518611012118-696072aa579a?w=400&h=600&fit=crop"
-                alt="Group fitness bootcamp class"
+                src="https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=400&h=600&fit=crop"
+                alt="Friends playing doubles tennis"
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
               />
             </div>
-            <div className="aspect-[3/4] rounded-2xl overflow-hidden">
+            <div className="aspect-[3/4] rounded-xl sm:rounded-2xl overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&h=600&fit=crop"
-                alt="Group doing outdoor yoga"
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-              />
-            </div>
-            <div className="aspect-[3/4] rounded-2xl overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=600&fit=crop"
-                alt="Group exercise class outdoors"
+                src="https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?w=400&h=600&fit=crop"
+                alt="Outdoor group yoga class"
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
               />
             </div>
@@ -480,7 +481,7 @@ export default function Home() {
       </section>
 
       {/* Activities Section */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-white border-y border-zinc-200">
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-semibold text-zinc-900 tracking-tight mb-4">
@@ -496,7 +497,7 @@ export default function Home() {
               <Link
                 key={activity.label}
                 href={`/events?sport=${activity.label.toLowerCase()}`}
-                className="group relative p-6 rounded-2xl bg-zinc-50 border border-zinc-100 hover:bg-zinc-100 hover:border-zinc-200 transition-all duration-300"
+                className="group relative p-6 rounded-2xl bg-zinc-100 border border-zinc-200 hover:bg-zinc-200 hover:border-zinc-300 transition-all duration-300"
               >
                 <h3 className="text-lg font-semibold text-zinc-900 mb-1">
                   {activity.label}
@@ -519,7 +520,7 @@ export default function Home() {
       </section>
 
       {/* How It Works */}
-      <section className="py-24 bg-[#fbfbfd]">
+      <section className="py-24 bg-zinc-100">
         <div className="max-w-[980px] mx-auto px-6">
           <div className="text-center mb-20">
             <h2 className="text-4xl md:text-5xl font-semibold text-zinc-900 tracking-tight mb-4">
@@ -551,7 +552,7 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-white border-t border-zinc-200">
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-semibold text-zinc-900 tracking-tight">
@@ -583,7 +584,7 @@ export default function Home() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-32 bg-gradient-to-b from-[#fbfbfd] to-zinc-100">
+      <section className="py-32 bg-gradient-to-b from-zinc-50 to-zinc-200">
         <div className="max-w-[680px] mx-auto px-6 text-center">
           <h2 className="text-4xl md:text-5xl font-semibold text-zinc-900 tracking-tight mb-6">
             Start moving together.
@@ -604,24 +605,24 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-zinc-100 border-t border-zinc-200">
+      <footer className="bg-zinc-900">
         <div className="max-w-[980px] mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="text-xl font-semibold text-zinc-900">
+            <div className="text-xl font-semibold text-white">
               MatUp
             </div>
-            <div className="flex gap-8 text-sm text-zinc-500">
-              <Link href="/events" className="hover:text-zinc-900 transition-colors">
+            <div className="flex gap-8 text-sm text-zinc-400">
+              <Link href="/events" className="hover:text-white transition-colors">
                 Events
               </Link>
-              <Link href="/signup" className="hover:text-zinc-900 transition-colors">
+              <Link href="/signup" className="hover:text-white transition-colors">
                 Sign Up
               </Link>
-              <Link href="/login" className="hover:text-zinc-900 transition-colors">
+              <Link href="/login" className="hover:text-white transition-colors">
                 Log In
               </Link>
             </div>
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-zinc-500">
               © 2025 MatUp
             </p>
           </div>
@@ -667,7 +668,7 @@ function QuoteCard({
   image?: string;
 }) {
   return (
-    <div className="p-8 rounded-2xl bg-zinc-50 border border-zinc-100">
+    <div className="p-8 rounded-2xl bg-zinc-100 border border-zinc-200">
       <p className="text-zinc-700 text-lg leading-relaxed mb-6">
         &ldquo;{quote}&rdquo;
       </p>

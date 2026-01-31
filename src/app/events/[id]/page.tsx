@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import Navbar from "@/components/Navbar";
 import LocationLink from "@/components/LocationLink";
+import EventShareModal from "@/components/share/EventShareModal";
+import { useEventShare } from "@/components/share/useEventShare";
 
 type Event = {
   id: string;
@@ -61,7 +63,6 @@ export default function EventDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewingUser, setReviewingUser] = useState<ParticipantInfo | null>(null);
   const [reviewRating, setReviewRating] = useState(5);
@@ -72,12 +73,14 @@ export default function EventDetailPage() {
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
 
-  async function handleShare() {
-    const url = window.location.href;
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
+  const {
+    isModalOpen: showShareModal,
+    isGenerating,
+    isSharing,
+    openModal: openShareModal,
+    closeModal: closeShareModal,
+    shareImage,
+  } = useEventShare();
 
   const isJoined = participants.some((p) => p.user_id === user?.id);
   const isCreator = event?.creator_id === user?.id;
@@ -502,8 +505,8 @@ export default function EventDetailPage() {
             {/* Description */}
             {event.description && (
               <div className="bg-white rounded-2xl border border-zinc-200 p-6">
-                <h2 className="text-lg font-semibold text-zinc-900 mb-3 flex items-center gap-2">
-                  <span>📝</span> About this event
+                <h2 className="text-lg font-semibold text-zinc-900 mb-3">
+                  About this event
                 </h2>
                 <p className="text-zinc-600 whitespace-pre-wrap">
                   {event.description}
@@ -513,8 +516,8 @@ export default function EventDetailPage() {
 
             {/* Comments */}
             <div className="bg-white rounded-2xl border border-zinc-200 p-6">
-              <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
-                <span>💬</span> Discussion ({comments.length})
+              <h2 className="text-lg font-semibold text-zinc-900 mb-4">
+                Discussion ({comments.length})
               </h2>
 
               {/* Comment Form */}
@@ -617,8 +620,8 @@ export default function EventDetailPage() {
             {/* Participants */}
             <div className="bg-white rounded-2xl border border-zinc-200 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-zinc-900 flex items-center gap-2">
-                  <span>👥</span> Participants
+                <h2 className="text-lg font-semibold text-zinc-900">
+                  Participants
                 </h2>
                 <span
                   className={`text-sm font-medium ${
@@ -894,24 +897,13 @@ export default function EventDetailPage() {
 
             {/* Share Button */}
             <button
-              onClick={handleShare}
+              onClick={openShareModal}
               className="w-full py-3 bg-zinc-100 text-zinc-700 rounded-2xl font-medium hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2"
             >
-              {copied ? (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-emerald-500">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                  </svg>
-                  <span>Link Copied!</span>
-                </>
-              ) : (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
-                  </svg>
-                  <span>Share Event</span>
-                </>
-              )}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+              </svg>
+              <span>Share Event</span>
             </button>
 
             {/* Event Info */}
@@ -1022,6 +1014,22 @@ export default function EventDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Share Modal */}
+      <EventShareModal
+        isOpen={showShareModal}
+        onClose={closeShareModal}
+        onShare={shareImage}
+        isGenerating={isGenerating}
+        isSharing={isSharing}
+        eventTitle={event.title}
+        sportType={event.sport_type}
+        datetime={event.datetime}
+        location={event.location}
+        hostName={host?.name || "Event Host"}
+        isPastEvent={isPastEvent}
+        eventUrl={typeof window !== "undefined" ? window.location.href : ""}
+      />
     </div>
   );
 }

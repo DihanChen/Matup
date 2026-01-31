@@ -1,7 +1,7 @@
 /**
  * Shortens a full address to a more concise format for display
- * Example: "Central Park Tennis Courts, Central Park, Manhattan, New York County, New York, United States"
- * Becomes: "Central Park Tennis Courts, New York"
+ * Example: "Goodlife Fitness, 1156, Prospect Street, Uptown Centre, Prospect, Uptown, Fredericton, City of Fredericton, York County, New Brunswick, E3B 3C1, Canada"
+ * Becomes: "Goodlife Fitness, Fredericton, New Brunswick"
  */
 export function formatShortAddress(fullAddress: string): string {
   if (!fullAddress) return "";
@@ -13,20 +13,33 @@ export function formatShortAddress(fullAddress: string): string {
     return fullAddress;
   }
 
-  // Strategy: Take first part (venue/street) and last 1-2 parts (state/country or city/country)
   const firstPart = parts[0]; // Venue or street name
 
-  // Get meaningful location context from the end
-  // Usually the pattern is: ..., City, State, Country or ..., City, Country
-  const lastPart = parts[parts.length - 1]; // Country
-  const secondLastPart = parts[parts.length - 2]; // State or City
+  // Try to find city and province/state
+  // Usually near the end: ..., City, Province/State, Postal Code, Country
+  // We want to skip postal codes (contain numbers) and generic terms
+  const skipTerms = ["county", "city of", "region", "district"];
 
-  // If the address has multiple parts, show: "First part, State/City"
-  // This gives context without being overwhelming
-  if (parts.length > 4) {
-    return `${firstPart}, ${secondLastPart}`;
+  const meaningfulParts = parts.slice(1, -1).filter((part) => {
+    const lower = part.toLowerCase();
+    // Skip if it contains numbers (likely street number or postal code)
+    if (/\d/.test(part)) return false;
+    // Skip generic administrative terms
+    if (skipTerms.some((term) => lower.includes(term))) return false;
+    // Skip if too short (likely abbreviations or codes)
+    if (part.length < 3) return false;
+    return true;
+  });
+
+  // Take last 2 meaningful parts (usually city and province/state)
+  const locationContext = meaningfulParts.slice(-2);
+
+  if (locationContext.length >= 2) {
+    return `${firstPart}, ${locationContext.join(", ")}`;
+  } else if (locationContext.length === 1) {
+    return `${firstPart}, ${locationContext[0]}`;
   } else {
-    // For shorter addresses, show first and last
-    return `${firstPart}, ${lastPart}`;
+    // Fallback: first part and second-to-last part
+    return `${firstPart}, ${parts[parts.length - 2]}`;
   }
 }

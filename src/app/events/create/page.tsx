@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import Navbar from "@/components/Navbar";
 import LocationAutocomplete from "@/components/LocationAutocomplete";
+import { notifyNearbyUsers } from "@/lib/push-notifications";
 
 const SPORT_TYPES = [
   "Running",
@@ -67,12 +68,14 @@ export default function CreateEventPage() {
     const skillLevel = formData.get("skill_level") as string;
     const duration = parseInt(formData.get("duration") as string);
     const maxParticipants = parseInt(formData.get("max_participants") as string);
+    const reminderMinutesStr = formData.get("reminder_minutes") as string;
+    const reminderMinutes = reminderMinutesStr ? parseInt(reminderMinutesStr) : null;
 
     const datetime = new Date(`${date}T${time}`).toISOString();
 
     const supabase = createClient();
 
-    const { error } = await supabase.from("events").insert({
+    const { data: eventData, error } = await supabase.from("events").insert({
       title,
       description,
       sport_type: sportType,
@@ -84,12 +87,33 @@ export default function CreateEventPage() {
       creator_id: user?.id,
       latitude: coordinates?.lat || null,
       longitude: coordinates?.lng || null,
-    });
+      reminder_minutes: reminderMinutes,
+    }).select("id").single();
 
     if (error) {
       setError(error.message);
       setLoading(false);
       return;
+    }
+
+    // Notify nearby users if we have coordinates
+    if (coordinates && eventData?.id) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          await notifyNearbyUsers(
+            session.access_token,
+            eventData.id,
+            title,
+            location,
+            coordinates.lat,
+            coordinates.lng
+          );
+        }
+      } catch (notifyError) {
+        // Don't block event creation if notifications fail
+        console.error("Failed to send notifications:", notifyError);
+      }
     }
 
     router.push("/events");
@@ -187,8 +211,8 @@ export default function CreateEventPage() {
               />
             </div>
 
-            {/* Date, Time, and Duration */}
-            <div className="grid grid-cols-3 gap-4">
+            {/* Date and Time */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label
                   htmlFor="date"
@@ -219,28 +243,30 @@ export default function CreateEventPage() {
                   className="w-full px-4 py-2 border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
-              <div>
-                <label
-                  htmlFor="duration"
-                  className="block text-sm font-medium text-zinc-700 mb-1"
-                >
-                  Duration
-                </label>
-                <select
-                  id="duration"
-                  name="duration"
-                  required
-                  className="w-full px-4 py-2 border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                >
-                  <option value="30">30 min</option>
-                  <option value="45">45 min</option>
-                  <option value="60">1 hour</option>
-                  <option value="90">1.5 hours</option>
-                  <option value="120">2 hours</option>
-                  <option value="180">3 hours</option>
-                  <option value="240">4 hours</option>
-                </select>
-              </div>
+            </div>
+
+            {/* Duration */}
+            <div>
+              <label
+                htmlFor="duration"
+                className="block text-sm font-medium text-zinc-700 mb-1"
+              >
+                Duration
+              </label>
+              <select
+                id="duration"
+                name="duration"
+                required
+                className="w-full px-4 py-2 border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              >
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">1 hour</option>
+                <option value="90">1.5 hours</option>
+                <option value="120">2 hours</option>
+                <option value="180">3 hours</option>
+                <option value="240">4 hours</option>
+              </select>
             </div>
 
             {/* Skill Level */}
@@ -282,6 +308,31 @@ export default function CreateEventPage() {
                 required
                 className="w-full px-4 py-2 border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
+            </div>
+
+            {/* Reminder */}
+            <div>
+              <label
+                htmlFor="reminder_minutes"
+                className="block text-sm font-medium text-zinc-700 mb-1"
+              >
+                Send Reminder
+              </label>
+              <select
+                id="reminder_minutes"
+                name="reminder_minutes"
+                className="w-full px-4 py-2 border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              >
+                <option value="">No reminder</option>
+                <option value="15">15 minutes before</option>
+                <option value="30">30 minutes before</option>
+                <option value="60">1 hour before</option>
+                <option value="120">2 hours before</option>
+                <option value="1440">1 day before</option>
+              </select>
+              <p className="mt-1 text-xs text-zinc-500">
+                Attendees will receive a push notification before the event
+              </p>
             </div>
 
             {/* Description */}

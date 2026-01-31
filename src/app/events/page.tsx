@@ -79,7 +79,6 @@ function EventsContent() {
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [sportFilter, setSportFilter] = useState(sportFromUrl);
-  const [locationSearch, setLocationSearch] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -89,6 +88,15 @@ function EventsContent() {
 
   // Get user's location
   function handleGetLocation() {
+    // If already active, turn it off
+    if (locationStatus === "success") {
+      setUserLocation(null);
+      setLocationStatus("idle");
+      setSortByDistance(false);
+      setMaxDistance(null);
+      return;
+    }
+
     if (!navigator.geolocation) {
       setLocationStatus("error");
       return;
@@ -181,21 +189,14 @@ function EventsContent() {
       return { ...event, distance: undefined };
     });
 
-    // Filter by text location search
-    if (locationSearch.trim()) {
-      const searchLower = locationSearch.toLowerCase();
-      result = result.filter((event) =>
-        event.location.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Filter by title/description search
+    // Filter by search query (title, description, or location)
     if (searchQuery.trim()) {
       const queryLower = searchQuery.toLowerCase();
       result = result.filter(
         (event) =>
           event.title.toLowerCase().includes(queryLower) ||
-          event.description?.toLowerCase().includes(queryLower)
+          event.description?.toLowerCase().includes(queryLower) ||
+          event.location.toLowerCase().includes(queryLower)
       );
     }
 
@@ -225,7 +226,7 @@ function EventsContent() {
     }
 
     setFilteredEvents(result);
-  }, [events, locationSearch, searchQuery, userLocation, sortByDistance, maxDistance, skillFilter]);
+  }, [events, searchQuery, userLocation, sortByDistance, maxDistance, skillFilter]);
 
   return (
     <div className="min-h-screen bg-[#fbfbfd]">
@@ -253,27 +254,15 @@ function EventsContent() {
             {/* Search Inputs */}
             <div className="flex flex-col md:flex-row gap-3">
               <div className="flex-1 relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">
-                  🔍
-                </span>
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search events..."
-                  className="w-full pl-12 pr-4 py-3 rounded-xl bg-white/90 backdrop-blur text-zinc-900 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-white"
-                />
-              </div>
-              <div className="flex-1 relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">
-                  📍
-                </span>
-                <input
-                  type="text"
-                  value={locationSearch}
-                  onChange={(e) => setLocationSearch(e.target.value)}
-                  placeholder="Location (e.g. Toronto, Downtown)"
-                  className="w-full pl-12 pr-4 py-3 rounded-xl bg-white/90 backdrop-blur text-zinc-900 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-white"
+                  placeholder="Search events or locations..."
+                  className="w-full pl-9 pr-4 py-3 rounded-xl bg-white/90 backdrop-blur text-zinc-900 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-white"
                 />
               </div>
               <Link
@@ -286,16 +275,47 @@ function EventsContent() {
           </div>
         </div>
 
-        {/* Near Me Button */}
+        {/* Filters Row */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
+          {/* Sport Dropdown */}
+          <select
+            value={sportFilter}
+            onChange={(e) => setSportFilter(e.target.value)}
+            className="px-4 py-2.5 bg-white border border-zinc-200 rounded-lg text-sm font-medium text-zinc-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent cursor-pointer"
+          >
+            <option value="">All Sports</option>
+            <option value="running">Running</option>
+            <option value="tennis">Tennis</option>
+            <option value="cycling">Cycling</option>
+            <option value="gym">Gym</option>
+            <option value="yoga">Yoga</option>
+            <option value="basketball">Basketball</option>
+            <option value="soccer">Soccer</option>
+            <option value="swimming">Swimming</option>
+            <option value="hiking">Hiking</option>
+          </select>
+
+          {/* Level Dropdown */}
+          <select
+            value={skillFilter}
+            onChange={(e) => setSkillFilter(e.target.value)}
+            className="px-4 py-2.5 bg-white border border-zinc-200 rounded-lg text-sm font-medium text-zinc-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent cursor-pointer"
+          >
+            <option value="">All Levels</option>
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+
+          {/* Near Me Button */}
           <button
             onClick={handleGetLocation}
             disabled={locationStatus === "loading"}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all ${
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
               locationStatus === "success"
                 ? "bg-emerald-500 text-white"
                 : locationStatus === "error"
-                ? "bg-red-100 text-red-700 border border-red-300"
+                ? "bg-red-50 text-red-600 border border-red-200"
                 : "bg-white text-zinc-700 border border-zinc-200 hover:border-emerald-500 hover:text-emerald-600"
             }`}
           >
@@ -305,139 +325,63 @@ function EventsContent() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <span>Getting location...</span>
+                <span>Locating...</span>
               </>
             ) : locationStatus === "success" ? (
               <>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clipRule="evenodd" />
                 </svg>
                 <span>Near Me</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 opacity-60">
+                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                </svg>
               </>
             ) : locationStatus === "error" ? (
               <>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
                 </svg>
                 <span>Location denied</span>
               </>
             ) : (
               <>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clipRule="evenodd" />
                 </svg>
                 <span>Near Me</span>
               </>
             )}
           </button>
 
-          {/* Distance Filter - only show when location is enabled */}
+          {/* Distance Dropdown - only show when location is enabled */}
           {userLocation && (
-            <div className="flex items-center gap-2">
-              <span className="text-zinc-500 text-sm">Within:</span>
-              {[5, 10, 25, 50].map((km) => (
-                <button
-                  key={km}
-                  onClick={() => setMaxDistance(maxDistance === km ? null : km)}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                    maxDistance === km
-                      ? "bg-emerald-500 text-white"
-                      : "bg-white text-zinc-600 border border-zinc-200 hover:border-emerald-500"
-                  }`}
-                >
-                  {km}km
-                </button>
-              ))}
-              {maxDistance && (
-                <button
-                  onClick={() => setMaxDistance(null)}
-                  className="text-zinc-500 hover:text-zinc-700 text-sm underline"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
+            <select
+              value={maxDistance?.toString() || ""}
+              onChange={(e) => setMaxDistance(e.target.value ? Number(e.target.value) : null)}
+              className="px-4 py-2.5 bg-white border border-zinc-200 rounded-lg text-sm font-medium text-zinc-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent cursor-pointer"
+            >
+              <option value="">Any Distance</option>
+              <option value="5">Within 5km</option>
+              <option value="10">Within 10km</option>
+              <option value="25">Within 25km</option>
+              <option value="50">Within 50km</option>
+            </select>
           )}
-        </div>
 
-        {/* Sport Filters */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          <span className="text-zinc-600 font-medium">
-            Sport:
-          </span>
-          <div className="flex flex-wrap gap-2">
+          {/* Clear Filters - show when any filter is active */}
+          {(sportFilter || skillFilter || maxDistance) && (
             <button
-              onClick={() => setSportFilter("")}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                sportFilter === ""
-                  ? "bg-emerald-500 text-white"
-                  : "bg-white text-zinc-700 border border-zinc-200 hover:border-emerald-500"
-              }`}
+              onClick={() => {
+                setSportFilter("");
+                setSkillFilter("");
+                setMaxDistance(null);
+              }}
+              className="text-sm text-zinc-500 hover:text-zinc-700 underline"
             >
-              All Sports
+              Clear filters
             </button>
-            {[
-              { id: "running", icon: "🏃", label: "Running" },
-              { id: "tennis", icon: "🎾", label: "Tennis" },
-              { id: "cycling", icon: "🚴", label: "Cycling" },
-              { id: "gym", icon: "💪", label: "Gym" },
-              { id: "yoga", icon: "🧘", label: "Yoga" },
-              { id: "basketball", icon: "🏀", label: "Basketball" },
-              { id: "soccer", icon: "⚽", label: "Soccer" },
-              { id: "swimming", icon: "🏊", label: "Swimming" },
-              { id: "hiking", icon: "🥾", label: "Hiking" },
-            ].map((sport) => (
-              <button
-                key={sport.id}
-                onClick={() => setSportFilter(sport.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  sportFilter === sport.id
-                    ? "bg-emerald-500 text-white"
-                    : "bg-white text-zinc-700 border border-zinc-200 hover:border-emerald-500"
-                }`}
-              >
-                {sport.icon} {sport.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Skill Level Filter */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          <span className="text-zinc-600 font-medium">
-            Level:
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setSkillFilter("")}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                skillFilter === ""
-                  ? "bg-emerald-500 text-white"
-                  : "bg-white text-zinc-700 border border-zinc-200 hover:border-emerald-500"
-              }`}
-            >
-              All Levels
-            </button>
-            {[
-              { id: "beginner", label: "Beginner" },
-              { id: "intermediate", label: "Intermediate" },
-              { id: "advanced", label: "Advanced" },
-            ].map((level) => (
-              <button
-                key={level.id}
-                onClick={() => setSkillFilter(level.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  skillFilter === level.id
-                    ? "bg-emerald-500 text-white"
-                    : "bg-white text-zinc-700 border border-zinc-200 hover:border-emerald-500"
-                }`}
-              >
-                {level.label}
-              </button>
-            ))}
-          </div>
+          )}
         </div>
 
         {/* Results Count */}
@@ -451,11 +395,6 @@ function EventsContent() {
                   {filteredEvents.length}
                 </span>{" "}
                 {filteredEvents.length === 1 ? "event" : "events"} found
-                {maxDistance && ` within ${maxDistance}km`}
-                {locationSearch && ` near "${locationSearch}"`}
-                {sportFilter && ` for ${sportFilter}`}
-                {skillFilter && ` (${skillFilter})`}
-                {sortByDistance && userLocation && " (sorted by distance)"}
               </>
             )}
           </p>
@@ -485,7 +424,7 @@ function EventsContent() {
             <p className="text-zinc-500 mb-6">
               {maxDistance
                 ? `No events within ${maxDistance}km. Try increasing the distance or`
-                : locationSearch || searchQuery
+                : searchQuery
                 ? "Try adjusting your search or filters"
                 : "Be the first to create an event!"}
             </p>
