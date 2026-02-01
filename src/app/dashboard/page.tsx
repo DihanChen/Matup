@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
@@ -26,6 +26,14 @@ export default function DashboardPage() {
   const [joinedEvents, setJoinedEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
   const [showPastEvents, setShowPastEvents] = useState(false);
+  const pastEventsRef = useRef<HTMLElement>(null);
+
+  const scrollToPastEvents = () => {
+    setShowPastEvents(true);
+    setTimeout(() => {
+      pastEventsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  };
 
   useEffect(() => {
     const supabase = createClient();
@@ -164,22 +172,22 @@ export default function DashboardPage() {
             </p>
           </Link>
 
-          <Link
-            href="/profile"
-            className="group p-6 bg-white rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all"
+          <button
+            onClick={scrollToPastEvents}
+            className="group p-6 bg-white rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all text-left"
           >
             <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mb-4">
               <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <h2 className="text-lg font-semibold text-zinc-900 mb-1">
-              My Profile
+              Past Events
             </h2>
             <p className="text-sm text-zinc-500">
-              Update your preferences
+              View your event history
             </p>
-          </Link>
+          </button>
         </div>
 
         {/* Events I'm Hosting */}
@@ -247,7 +255,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Past Events */}
-        <section>
+        <section ref={pastEventsRef}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-zinc-900">
               Past Events
