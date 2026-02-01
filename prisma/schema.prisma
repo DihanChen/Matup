@@ -21,11 +21,3 @@ model PushSubscription {
   @@index([latitude, longitude])
   @@map("push_subscriptions")
 }
-
-model EventReminder {
-  id        String   @id @default(uuid())
-  eventId   String   @unique @map("event_id")
-  sentAt    DateTime @default(now()) @map("sent_at")
-
-  @@map("event_reminders")
-}

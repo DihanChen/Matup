@@ -68,8 +68,6 @@ export default function CreateEventPage() {
     const skillLevel = formData.get("skill_level") as string;
     const duration = parseInt(formData.get("duration") as string);
     const maxParticipants = parseInt(formData.get("max_participants") as string);
-    const reminderMinutesStr = formData.get("reminder_minutes") as string;
-    const reminderMinutes = reminderMinutesStr ? parseInt(reminderMinutesStr) : null;
 
     const datetime = new Date(`${date}T${time}`).toISOString();
 
@@ -87,7 +85,6 @@ export default function CreateEventPage() {
       creator_id: user?.id,
       latitude: coordinates?.lat || null,
       longitude: coordinates?.lng || null,
-      reminder_minutes: reminderMinutes,
     }).select("id").single();
 
     if (error) {
@@ -308,31 +305,6 @@ export default function CreateEventPage() {
                 required
                 className="w-full px-4 py-2 border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
-            </div>
-
-            {/* Reminder */}
-            <div>
-              <label
-                htmlFor="reminder_minutes"
-                className="block text-sm font-medium text-zinc-700 mb-1"
-              >
-                Send Reminder
-              </label>
-              <select
-                id="reminder_minutes"
-                name="reminder_minutes"
-                className="w-full px-4 py-2 border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              >
-                <option value="">No reminder</option>
-                <option value="15">15 minutes before</option>
-                <option value="30">30 minutes before</option>
-                <option value="60">1 hour before</option>
-                <option value="120">2 hours before</option>
-                <option value="1440">1 day before</option>
-              </select>
-              <p className="mt-1 text-xs text-zinc-500">
-                Attendees will receive a push notification before the event
-              </p>
             </div>
 
             {/* Description */}
