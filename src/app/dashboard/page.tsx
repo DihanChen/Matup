@@ -208,7 +208,7 @@ export default function DashboardPage() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {createdEvents.map((event) => (
-                <EventCard key={event.id} event={event} isCreator />
+                <EventCard key={event.id} event={event} />
               ))}
             </div>
           )}
@@ -273,7 +273,7 @@ export default function DashboardPage() {
                   <EventCard
                     key={event.id}
                     event={event}
-                    isCreator={event.creator_id === user?.id}
+                    showHostBadge={event.creator_id === user?.id}
                     isPast
                   />
                 ))}
@@ -286,7 +286,7 @@ export default function DashboardPage() {
   );
 }
 
-function EventCard({ event, isCreator, isPast }: { event: Event; isCreator?: boolean; isPast?: boolean }) {
+function EventCard({ event, showHostBadge, isPast }: { event: Event; showHostBadge?: boolean; isPast?: boolean }) {
   const date = new Date(event.datetime);
   const formattedDate = date.toLocaleDateString("en-US", {
     weekday: "short",
@@ -314,7 +314,7 @@ function EventCard({ event, isCreator, isPast }: { event: Event; isCreator?: boo
             </span>
           )}
         </div>
-        {isCreator && (
+        {showHostBadge && (
           <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
             Host
           </span>

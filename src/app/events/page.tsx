@@ -22,6 +22,7 @@ type Event = {
   longitude: number | null;
   skill_level: string;
   distance?: number; // calculated client-side
+  creator_name?: string;
 };
 
 type UserLocation = {
@@ -144,6 +145,7 @@ function EventsContent() {
       }
 
       const eventIds = (eventsData || []).map((e) => e.id);
+      const creatorIds = [...new Set((eventsData || []).map((e) => e.creator_id))];
 
       if (eventIds.length > 0) {
         const { data: participantsData } = await supabase
@@ -156,9 +158,21 @@ function EventsContent() {
           counts[p.event_id] = (counts[p.event_id] || 0) + 1;
         });
 
+        // Fetch creator profiles
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, name")
+          .in("id", creatorIds);
+
+        const creatorNames: Record<string, string> = {};
+        (profilesData || []).forEach((p) => {
+          creatorNames[p.id] = p.name || "Anonymous";
+        });
+
         const eventsWithCount = (eventsData || []).map((event) => ({
           ...event,
           participant_count: counts[event.id] || 0,
+          creator_name: creatorNames[event.creator_id] || "Anonymous",
         }));
         setEvents(eventsWithCount);
       } else {
@@ -237,10 +251,21 @@ function EventsContent() {
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 p-8 mb-8">
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-4 left-10 text-6xl">🏃</div>
-            <div className="absolute top-8 right-16 text-5xl">🎾</div>
-            <div className="absolute bottom-4 left-1/4 text-4xl">🚴</div>
-            <div className="absolute bottom-6 right-1/4 text-5xl">💪</div>
+            <svg className="absolute top-4 left-10 w-16 h-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+            <svg className="absolute top-8 right-16 w-14 h-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <circle cx="12" cy="12" r="9" />
+              <path strokeLinecap="round" d="M3.5 12c0-2 3.8-3.5 8.5-3.5s8.5 1.5 8.5 3.5M3.5 12c0 2 3.8 3.5 8.5 3.5s8.5-1.5 8.5-3.5" />
+            </svg>
+            <svg className="absolute bottom-4 left-1/4 w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <circle cx="6" cy="17" r="3" />
+              <circle cx="18" cy="17" r="3" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 17l4-7h4l2 3.5M10 10l2-4h3" />
+            </svg>
+            <svg className="absolute bottom-6 right-1/4 w-14 h-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h2m14 0h2M6 12v-2a1 1 0 011-1h1v6H7a1 1 0 01-1-1v-2zm12 0v-2a1 1 0 00-1-1h-1v6h1a1 1 0 001-1v-2zm-10 0h8" />
+            </svg>
           </div>
 
           <div className="relative">
@@ -417,7 +442,11 @@ function EventsContent() {
           </div>
         ) : filteredEvents.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl border border-zinc-200">
-            <div className="text-6xl mb-4">🔍</div>
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-zinc-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
             <h3 className="text-xl font-semibold text-zinc-900 mb-2">
               No events found
             </h3>
@@ -515,11 +544,21 @@ function EventCard({ event }: { event: Event }) {
             />
           </div>
           <div className="flex items-center gap-2 text-zinc-600">
-            <span>📅</span>
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
             <span>
               {formattedDate} at {formattedTime}
             </span>
           </div>
+          {event.creator_name && (
+            <div className="flex items-center gap-2 text-zinc-600">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span>{event.creator_name}</span>
+            </div>
+          )}
         </div>
 
         {event.description && (
