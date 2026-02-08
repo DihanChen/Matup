@@ -101,7 +101,7 @@ export default function ActivityCard({ activity, selected, onSelect }: ActivityC
       type="button"
       onClick={() => onSelect(activity.id)}
       className={`
-        relative p-6 rounded-2xl cursor-pointer transition-all duration-200
+        relative p-4 sm:p-5 lg:p-6 rounded-2xl cursor-pointer transition-all duration-200
         bg-zinc-100 flex flex-col items-center text-center
         hover:scale-105 hover:shadow-lg
         ${selected
@@ -110,10 +110,10 @@ export default function ActivityCard({ activity, selected, onSelect }: ActivityC
         }
       `}
     >
-      <div className="text-zinc-900 mb-3">
-        <ActivityIcon id={activity.id} className="w-10 h-10" />
+      <div className="text-zinc-900 mb-2 sm:mb-3">
+        <ActivityIcon id={activity.id} className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10" />
       </div>
-      <div className="text-zinc-900 font-semibold text-sm">{activity.name}</div>
+      <div className="text-zinc-900 font-semibold text-xs sm:text-sm">{activity.name}</div>
     </button>
   );
 }

@@ -580,10 +580,10 @@ export default function LeagueDetailPage() {
   return (
     <div className="min-h-screen bg-white">
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <Link
           href="/leagues"
-          className="inline-flex items-center text-zinc-600 hover:text-orange-500 mb-6 font-medium"
+          className="inline-flex items-center text-zinc-600 hover:text-orange-500 mb-4 sm:mb-6 font-medium"
         >
           ← Back to leagues
         </Link>
@@ -592,7 +592,7 @@ export default function LeagueDetailPage() {
           {/* Main Content */}
           <div className="md:col-span-2 space-y-6">
             {/* Header Card */}
-            <div className="relative overflow-hidden rounded-2xl bg-orange-500 p-6 text-white">
+            <div className="relative overflow-hidden rounded-2xl bg-orange-500 p-5 sm:p-6 text-white">
               <div className="relative">
                 <div className="flex flex-wrap gap-2 mb-4">
                   {isTennis ? (
@@ -623,7 +623,7 @@ export default function LeagueDetailPage() {
                     </>
                   )}
                 </div>
-                <h1 className="text-3xl font-bold mb-2">{league.name}</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2">{league.name}</h1>
                 {league.description && (
                   <p className="text-white/80">{league.description}</p>
                 )}

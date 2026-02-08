@@ -12,12 +12,12 @@ export default function StepIndicator({ currentStep, totalSteps }: StepIndicator
   const progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-zinc-500">
+    <div className="mb-6 sm:mb-8">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-3">
+        <span className="text-xs sm:text-sm font-medium text-zinc-500">
           Step <span className="text-orange-500 font-bold">{String(currentStep).padStart(2, '0')}</span> / {String(totalSteps).padStart(2, '0')}
         </span>
-        <span className="text-sm font-medium text-zinc-900">
+        <span className="text-xs sm:text-sm font-medium text-zinc-900">
           {STEP_LABELS[currentStep - 1]}
         </span>
       </div>
@@ -40,7 +40,7 @@ export function StepLabel({ step }: { step: number }) {
   const label = labels[step] || { text: '', highlight: '' };
 
   return (
-    <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-zinc-900 text-center mb-10">
+    <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-zinc-900 text-center mb-8 sm:mb-10">
       {label.text}{label.lineBreak && <br />}<span className="text-orange-500">{label.highlight}</span>
     </h1>
   );

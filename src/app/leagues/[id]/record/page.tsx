@@ -533,9 +533,9 @@ export default function RecordResultsPage() {
   return (
     <div className="min-h-screen bg-white">
 
-      <main className="max-w-2xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-zinc-900">Record <span className="text-orange-500">Results</span></h1>
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900">Record <span className="text-orange-500">Results</span></h1>
           <Link
             href={`/leagues/${leagueId}`}
             className="text-zinc-500 hover:text-zinc-700 transition-colors"
@@ -546,7 +546,7 @@ export default function RecordResultsPage() {
           </Link>
         </div>
 
-        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-zinc-200 shadow-sm space-y-6">
+        <div className="bg-white p-5 sm:p-8 rounded-2xl border border-zinc-200 shadow-sm space-y-6">
           <p className="text-sm text-zinc-500 text-center">
             Recording results for{" "}
             <span className="font-medium text-zinc-900">{league.name}</span>

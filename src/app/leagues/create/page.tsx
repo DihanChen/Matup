@@ -234,13 +234,13 @@ export default function CreateLeaguePage() {
   if (!isPremium) {
     return (
       <div className="min-h-screen bg-white">
-        <main className="max-w-lg mx-auto px-6 py-16 text-center">
-          <div className="w-24 h-24 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-12 h-12 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <main className="max-w-lg mx-auto px-4 sm:px-6 py-12 sm:py-16 text-center">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 sm:w-12 sm:h-12 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236c.982.143 1.954.317 2.916.52A6.003 6.003 0 0 1 16.27 9.728M18.75 4.236V4.5c0 2.108-.966 3.99-2.48 5.228m0 0a6.003 6.003 0 0 1-2.27.94m2.27-.94a17.957 17.957 0 0 0 3.485-2.269" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-zinc-900 mb-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 mb-2">
             Premium Required
           </h1>
           <p className="text-zinc-500 mb-6">
@@ -261,7 +261,7 @@ export default function CreateLeaguePage() {
   return (
     <div className="min-h-screen bg-white">
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <StepIndicator currentStep={step} totalSteps={TOTAL_STEPS} />
 
         {error && (
@@ -273,7 +273,7 @@ export default function CreateLeaguePage() {
         {/* Step 1: Sport & Match Type */}
         {step === 1 && (
           <div className="animate-fadeIn">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-zinc-900 text-center mb-10">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-zinc-900 text-center mb-8 sm:mb-10">
               Choose your <span className="text-orange-500">sport</span>
             </h1>
 
@@ -283,7 +283,7 @@ export default function CreateLeaguePage() {
                 type="button"
                 onClick={() => updateFormData({ sportType: "running", matchType: "", rotationType: "" })}
                 className={`
-                  relative p-8 rounded-2xl cursor-pointer transition-all duration-200
+                  relative p-5 sm:p-7 rounded-2xl cursor-pointer transition-all duration-200
                   bg-zinc-100 flex flex-col items-center text-center
                   hover:scale-105 hover:shadow-lg
                   ${formData.sportType === "running"
@@ -293,7 +293,7 @@ export default function CreateLeaguePage() {
                 `}
               >
                 <div className="text-zinc-900 mb-3">
-                  <ActivityIcon id="running" className="w-10 h-10" />
+                  <ActivityIcon id="running" className="w-8 h-8 sm:w-10 sm:h-10" />
                 </div>
                 <div className="text-zinc-900 font-semibold">Running</div>
                 <div className="text-xs text-zinc-500 mt-1">Club runs & time trials</div>
@@ -302,7 +302,7 @@ export default function CreateLeaguePage() {
                 type="button"
                 onClick={() => updateFormData({ sportType: "tennis" })}
                 className={`
-                  relative p-8 rounded-2xl cursor-pointer transition-all duration-200
+                  relative p-5 sm:p-7 rounded-2xl cursor-pointer transition-all duration-200
                   bg-zinc-100 flex flex-col items-center text-center
                   hover:scale-105 hover:shadow-lg
                   ${formData.sportType === "tennis"
@@ -312,7 +312,7 @@ export default function CreateLeaguePage() {
                 `}
               >
                 <div className="text-zinc-900 mb-3">
-                  <ActivityIcon id="tennis" className="w-10 h-10" />
+                  <ActivityIcon id="tennis" className="w-8 h-8 sm:w-10 sm:h-10" />
                 </div>
                 <div className="text-zinc-900 font-semibold">Tennis</div>
                 <div className="text-xs text-zinc-500 mt-1">Singles & doubles leagues</div>
@@ -345,7 +345,7 @@ export default function CreateLeaguePage() {
                       type="button"
                       onClick={() => updateFormData({ matchType: "singles", rotationType: "" })}
                       className={`
-                        p-6 rounded-2xl cursor-pointer transition-all duration-200
+                        p-4 sm:p-6 rounded-2xl cursor-pointer transition-all duration-200
                         bg-zinc-100 flex flex-col items-center text-center
                         hover:scale-105 hover:shadow-lg
                         ${formData.matchType === "singles"
@@ -355,7 +355,7 @@ export default function CreateLeaguePage() {
                       `}
                     >
                       <div className="text-zinc-900 mb-2">
-                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <svg className="w-7 h-7 sm:w-8 sm:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                         </svg>
                       </div>
@@ -366,7 +366,7 @@ export default function CreateLeaguePage() {
                       type="button"
                       onClick={() => updateFormData({ matchType: "doubles" })}
                       className={`
-                        p-6 rounded-2xl cursor-pointer transition-all duration-200
+                        p-4 sm:p-6 rounded-2xl cursor-pointer transition-all duration-200
                         bg-zinc-100 flex flex-col items-center text-center
                         hover:scale-105 hover:shadow-lg
                         ${formData.matchType === "doubles"
@@ -376,7 +376,7 @@ export default function CreateLeaguePage() {
                       `}
                     >
                       <div className="text-zinc-900 mb-2">
-                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <svg className="w-7 h-7 sm:w-8 sm:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
                         </svg>
                       </div>
@@ -399,7 +399,7 @@ export default function CreateLeaguePage() {
                         type="button"
                         onClick={() => updateFormData({ rotationType: "random" })}
                         className={`
-                          p-5 rounded-2xl cursor-pointer transition-all duration-200
+                          p-4 sm:p-5 rounded-2xl cursor-pointer transition-all duration-200
                           bg-zinc-100 flex flex-col items-center text-center
                           hover:scale-105 hover:shadow-lg
                           ${formData.rotationType === "random"
@@ -409,7 +409,7 @@ export default function CreateLeaguePage() {
                         `}
                       >
                         <div className="text-zinc-900 mb-2">
-                          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
                           </svg>
                         </div>
@@ -420,7 +420,7 @@ export default function CreateLeaguePage() {
                         type="button"
                         onClick={() => updateFormData({ rotationType: "assigned" })}
                         className={`
-                          p-5 rounded-2xl cursor-pointer transition-all duration-200
+                          p-4 sm:p-5 rounded-2xl cursor-pointer transition-all duration-200
                           bg-zinc-100 flex flex-col items-center text-center
                           hover:scale-105 hover:shadow-lg
                           ${formData.rotationType === "assigned"
@@ -430,7 +430,7 @@ export default function CreateLeaguePage() {
                         `}
                       >
                         <div className="text-zinc-900 mb-2">
-                          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
                           </svg>
                         </div>
@@ -448,7 +448,7 @@ export default function CreateLeaguePage() {
         {/* Step 2: Schedule */}
         {step === 2 && (
           <div className="animate-fadeIn">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-zinc-900 text-center mb-10">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-zinc-900 text-center mb-8 sm:mb-10">
               Set the <span className="text-orange-500">schedule</span>
             </h1>
 
@@ -501,7 +501,7 @@ export default function CreateLeaguePage() {
         {/* Step 3: Details */}
         {step === 3 && (
           <div className="animate-fadeIn">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-zinc-900 text-center mb-10">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-zinc-900 text-center mb-8 sm:mb-10">
               League <span className="text-orange-500">details</span>
             </h1>
 

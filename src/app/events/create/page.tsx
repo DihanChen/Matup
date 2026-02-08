@@ -216,7 +216,7 @@ export default function CreateEventPage() {
     const vibeLabel = VIBE_OPTIONS.find(v => v.value === formData.skillLevel)?.label || 'Casual';
     return (
       <div className="min-h-screen bg-white">
-        <main className="max-w-lg mx-auto px-6 py-16 text-center">
+        <main className="max-w-lg mx-auto px-4 sm:px-6 py-12 sm:py-16 text-center">
           <div className="w-24 h-24 bg-lime-300 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg className="w-12 h-12 text-zinc-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -314,7 +314,7 @@ export default function CreateEventPage() {
   return (
     <div className="min-h-screen bg-white">
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <StepIndicator currentStep={step} totalSteps={TOTAL_STEPS} />
 
         {error && (
@@ -327,7 +327,7 @@ export default function CreateEventPage() {
         {step === 1 && (
           <div className="animate-fadeIn">
             <StepLabel step={1} />
-            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               {ACTIVITIES.map(activity => (
                 <ActivityCard
                   key={activity.id}
@@ -342,12 +342,12 @@ export default function CreateEventPage() {
 
         {/* Step 2: When & Where */}
         {step === 2 && (
-          <div className="animate-fadeIn">
+          <div className="animate-fadeIn overflow-x-hidden">
             <StepLabel step={2} />
 
-            <div className="grid md:grid-cols-2 gap-8 items-stretch">
+            <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 items-stretch">
               {/* Left: Inputs */}
-              <div className="space-y-8">
+              <div className="space-y-6 sm:space-y-8 min-w-0">
                 {/* Date & Time */}
                 <div>
                   <div className="flex items-center gap-2 mb-4">
@@ -365,7 +365,7 @@ export default function CreateEventPage() {
                           key={d.value}
                           type="button"
                           onClick={() => updateFormData({ date: d.value })}
-                          className={`flex-shrink-0 py-2.5 px-5 rounded-full text-sm font-medium transition-all ${
+                          className={`flex-shrink-0 py-2 sm:py-2.5 px-4 sm:px-5 rounded-full text-xs sm:text-sm font-medium transition-all ${
                             formData.date === d.value
                               ? 'bg-zinc-900 text-white'
                               : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
@@ -390,7 +390,7 @@ export default function CreateEventPage() {
                           key={time.value}
                           type="button"
                           onClick={() => updateFormData({ time: time.value })}
-                          className={`flex-shrink-0 py-2.5 px-5 rounded-full text-sm font-medium transition-all ${
+                          className={`flex-shrink-0 py-2 sm:py-2.5 px-4 sm:px-5 rounded-full text-xs sm:text-sm font-medium transition-all ${
                             formData.time === time.value
                               ? 'bg-zinc-900 text-white'
                               : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
@@ -426,7 +426,7 @@ export default function CreateEventPage() {
                     placeholder="Search for a park, gym or court..."
                   />
                   {/* Map preview */}
-                  <div className="mt-3 rounded-xl h-[160px] overflow-hidden bg-zinc-100">
+                  <div className="mt-3 rounded-xl h-[140px] sm:h-[160px] overflow-hidden bg-zinc-100">
                     {formData.coordinates ? (
                       <div className="relative w-full h-full">
                         <iframe
@@ -453,15 +453,15 @@ export default function CreateEventPage() {
               </div>
 
               {/* Right: Live Preview + Buttons */}
-              <div className="flex flex-col">
-                <div className="bg-zinc-100 rounded-2xl p-8 flex flex-col justify-between flex-1">
-                  <div className="mb-6"><span className="text-sm font-semibold text-white bg-zinc-900 rounded-full px-4 py-1.5">Event</span></div>
-                  <p className="text-2xl md:text-3xl font-extrabold leading-snug">
+              <div className="flex flex-col min-w-0">
+                <div className="bg-zinc-100 rounded-2xl p-5 sm:p-6 md:p-8 flex flex-col justify-between flex-1 max-w-xl mx-auto w-full lg:max-w-none">
+                  <div className="mb-6"><span className="text-xs sm:text-sm font-semibold text-white bg-zinc-900 rounded-full px-3 sm:px-4 py-1 sm:py-1.5">Event</span></div>
+                  <p className="text-xl sm:text-2xl md:text-3xl font-extrabold leading-snug">
                     I&apos;m hosting a{' '}
                     <span className="text-orange-500">
-                      {getSelectedActivity()?.name || '...'} session
+                      {getSelectedActivity()?.name || '...'}
                     </span>{' '}
-                    at{' '}
+                    session at{' '}
                     <span className="text-orange-500">
                       {formData.location ? formData.location.split(',')[0] : '...'}
                     </span>{' '}
@@ -486,7 +486,7 @@ export default function CreateEventPage() {
                       type="button"
                       onClick={handleNext}
                       disabled={!canProceed()}
-                      className={`w-full py-3.5 rounded-full font-medium transition-all ${
+                      className={`w-full py-3 sm:py-3.5 rounded-full font-medium transition-all ${
                         canProceed()
                           ? 'bg-zinc-900 text-white hover:bg-zinc-800'
                           : 'bg-zinc-300 text-zinc-500 cursor-not-allowed'
@@ -502,7 +502,7 @@ export default function CreateEventPage() {
                     <button
                       type="button"
                       onClick={handleBack}
-                      className="w-full py-3.5 rounded-full font-medium border border-zinc-300 text-zinc-700 hover:bg-white/60 transition-colors"
+                      className="w-full py-3 sm:py-3.5 rounded-full font-medium border border-zinc-300 text-zinc-700 hover:bg-white/60 transition-colors"
                     >
                       Back
                     </button>
@@ -518,27 +518,27 @@ export default function CreateEventPage() {
           <div className="animate-fadeIn">
             <StepLabel step={3} />
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid md:grid-cols-2 gap-6 md:gap-8">
               {/* Left: Participant count + Sport fields + Vibe + Note */}
               <div className="space-y-6">
                 {/* Participant counter in bordered card */}
-                <div className="border border-zinc-200 rounded-2xl p-6">
+                <div className="border border-zinc-200 rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between">
                     <button
                       type="button"
                       onClick={() => updateFormData({ maxParticipants: Math.max(2, formData.maxParticipants - 1) })}
-                      className="w-12 h-12 rounded-full border-2 border-zinc-200 flex items-center justify-center text-zinc-600 hover:border-zinc-400 transition-colors text-xl font-bold"
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-zinc-200 flex items-center justify-center text-zinc-600 hover:border-zinc-400 transition-colors text-lg sm:text-xl font-bold"
                     >
                       −
                     </button>
                     <div className="text-center">
-                      <div className="text-5xl font-bold text-zinc-900">{formData.maxParticipants}</div>
+                      <div className="text-4xl sm:text-5xl font-bold text-zinc-900">{formData.maxParticipants}</div>
                       <div className="text-sm text-zinc-400 mt-1">Needed</div>
                     </div>
                     <button
                       type="button"
                       onClick={() => updateFormData({ maxParticipants: Math.min(50, formData.maxParticipants + 1) })}
-                      className="w-12 h-12 rounded-full border-2 border-zinc-200 flex items-center justify-center text-zinc-600 hover:border-zinc-400 transition-colors text-xl font-bold"
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-zinc-200 flex items-center justify-center text-zinc-600 hover:border-zinc-400 transition-colors text-lg sm:text-xl font-bold"
                     >
                       +
                     </button>
@@ -631,7 +631,7 @@ export default function CreateEventPage() {
                     </svg>
                     <span className="text-lg font-bold text-zinc-900">Cover</span>
                   </div>
-                  <div className="relative h-[200px] rounded-2xl overflow-hidden bg-zinc-100">
+                  <div className="relative h-[160px] sm:h-[200px] rounded-2xl overflow-hidden bg-zinc-100">
                     <Image
                       src={`/covers/${formData.sportType}.jpg`}
                       alt={`${formData.sportType} cover`}
@@ -655,7 +655,7 @@ export default function CreateEventPage() {
                 </div>
 
                 {/* Instant Booking toggle */}
-                <div className="flex items-center justify-between p-5 border border-zinc-200 rounded-2xl">
+                <div className="flex items-center justify-between p-4 sm:p-5 border border-zinc-200 rounded-2xl">
                   <div>
                     <div className="font-semibold text-zinc-900">Instant Booking</div>
                     <div className="text-xs text-zinc-500 mt-0.5">Players join without your manual approval</div>
@@ -666,7 +666,7 @@ export default function CreateEventPage() {
                 </div>
 
                 {/* Waitlist Enabled toggle */}
-                <div className="flex items-center justify-between p-5 border border-zinc-200 rounded-2xl">
+                <div className="flex items-center justify-between p-4 sm:p-5 border border-zinc-200 rounded-2xl">
                   <div>
                     <div className="font-semibold text-zinc-900">Waitlist Enabled</div>
                     <div className="text-xs text-zinc-500 mt-0.5">Allow users to wait for a free spot</div>
