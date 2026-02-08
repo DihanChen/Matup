@@ -67,13 +67,17 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#fbfbfd] px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-white px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="text-2xl font-semibold text-zinc-900 hover:text-emerald-600 transition-colors">
-            MatUp
+          <Link href="/" className="inline-block mb-6">
+            <svg width="40" height="40" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-zinc-900 mx-auto">
+              <circle cx="16" cy="6" r="3" fill="currentColor"/>
+              <path d="M10 14c0-1 1.5-3 6-3s6 2 6 3l-2 8h-2l1-6h-1l-2 10h-2L12 16h-1l1 6h-2l-2-8z" fill="currentColor"/>
+              <path d="M8 26l4-4M24 26l-4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
           </Link>
-          <h1 className="text-3xl font-semibold text-zinc-900 mt-8 tracking-tight">
+          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">
             Create your account
           </h1>
           <p className="text-zinc-500 mt-2">
@@ -104,7 +108,7 @@ export default function SignupPage() {
                 id="name"
                 name="name"
                 required
-                className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all"
+                className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-white transition-all"
                 placeholder="John Doe"
               />
             </div>
@@ -121,7 +125,7 @@ export default function SignupPage() {
                 id="email"
                 name="email"
                 required
-                className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all"
+                className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-white transition-all"
                 placeholder="you@example.com"
               />
             </div>
@@ -145,7 +149,7 @@ export default function SignupPage() {
                   }}
                   required
                   minLength={6}
-                  className="w-full px-4 py-3 pr-12 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all"
+                  className="w-full px-4 py-3 pr-12 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-white transition-all"
                   placeholder="••••••••"
                 />
                 <button
@@ -188,11 +192,11 @@ export default function SignupPage() {
                   }}
                   required
                   minLength={6}
-                  className={`w-full px-4 py-3 pr-12 border rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all ${
+                  className={`w-full px-4 py-3 pr-12 border rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-white transition-all ${
                     passwordError
                       ? "border-red-500"
                       : confirmPassword && password === confirmPassword
-                      ? "border-emerald-500"
+                      ? "border-orange-500"
                       : "border-zinc-200"
                   }`}
                   placeholder="••••••••"
@@ -218,7 +222,7 @@ export default function SignupPage() {
                 <p className="text-xs text-red-500 mt-1.5">{passwordError}</p>
               )}
               {confirmPassword && password === confirmPassword && !passwordError && (
-                <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
+                <p className="text-xs text-orange-500 mt-1.5 flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
@@ -230,7 +234,7 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-zinc-900 text-white rounded-xl font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+              className="w-full py-3 bg-zinc-900 text-white rounded-full font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
             >
               {loading ? "Creating account..." : "Create account"}
             </button>
@@ -239,7 +243,7 @@ export default function SignupPage() {
 
         <p className="text-center text-zinc-500 mt-6">
           Already have an account?{" "}
-          <Link href="/login" className="text-emerald-600 hover:text-emerald-700 font-medium">
+          <Link href="/login" className="text-orange-500 hover:text-orange-600 font-medium">
             Sign in
           </Link>
         </p>

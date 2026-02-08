@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase";
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[#fbfbfd] px-4">
+      <div className="min-h-screen flex items-center justify-center bg-white px-4">
         <div className="text-zinc-500">Loading...</div>
       </div>
     }>
@@ -59,13 +59,17 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#fbfbfd] px-4">
+    <div className="min-h-screen flex items-center justify-center bg-white px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="text-2xl font-semibold text-zinc-900 hover:text-emerald-600 transition-colors">
-            MatUp
+          <Link href="/" className="inline-block mb-6">
+            <svg width="40" height="40" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-zinc-900 mx-auto">
+              <circle cx="16" cy="6" r="3" fill="currentColor"/>
+              <path d="M10 14c0-1 1.5-3 6-3s6 2 6 3l-2 8h-2l1-6h-1l-2 10h-2L12 16h-1l1 6h-2l-2-8z" fill="currentColor"/>
+              <path d="M8 26l4-4M24 26l-4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
           </Link>
-          <h1 className="text-3xl font-semibold text-zinc-900 mt-8 tracking-tight">
+          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">
             Welcome back
           </h1>
           <p className="text-zinc-500 mt-2">
@@ -78,7 +82,7 @@ function LoginContent() {
           className="bg-white p-8 rounded-2xl border border-zinc-200 shadow-sm"
         >
           {message && (
-            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-sm">
+            <div className="mb-4 p-3 bg-orange-50 border border-orange-200 text-orange-700 rounded-xl text-sm">
               {message}
             </div>
           )}
@@ -102,7 +106,7 @@ function LoginContent() {
                 id="email"
                 name="email"
                 required
-                className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all"
+                className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-white transition-all"
                 placeholder="you@example.com"
               />
             </div>
@@ -119,7 +123,7 @@ function LoginContent() {
                 id="password"
                 name="password"
                 required
-                className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all"
+                className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent focus:bg-white transition-all"
                 placeholder="••••••••"
               />
             </div>
@@ -131,7 +135,7 @@ function LoginContent() {
               </label>
               <Link
                 href="/forgot-password"
-                className="text-emerald-600 hover:text-emerald-700 font-medium"
+                className="text-orange-500 hover:text-orange-600 font-medium"
               >
                 Forgot password?
               </Link>
@@ -140,7 +144,7 @@ function LoginContent() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-zinc-900 text-white rounded-xl font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-zinc-900 text-white rounded-full font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Signing in..." : "Sign in"}
             </button>
@@ -149,7 +153,7 @@ function LoginContent() {
 
         <p className="text-center text-zinc-500 mt-6">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-emerald-600 hover:text-emerald-700 font-medium">
+          <Link href="/signup" className="text-orange-500 hover:text-orange-600 font-medium">
             Get started
           </Link>
         </p>

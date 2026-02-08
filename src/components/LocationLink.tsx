@@ -59,7 +59,7 @@ export default function LocationLink({
       <button
         type="button"
         onClick={handleClick}
-        className={`inline-flex items-center gap-1 hover:text-emerald-600 transition-colors ${className}`}
+        className={`inline-flex items-center gap-1 hover:text-orange-500 transition-colors ${className}`}
       >
         {content}
       </button>
@@ -71,7 +71,7 @@ export default function LocationLink({
       href={mapsUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center gap-1 hover:text-emerald-600 transition-colors ${className}`}
+      className={`inline-flex items-center gap-1 hover:text-orange-500 transition-colors ${className}`}
       onClick={(e) => e.stopPropagation()} // Prevent parent click handlers
     >
       {content}

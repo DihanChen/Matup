@@ -19,7 +19,7 @@ type LocationSuggestion = {
 type LocationAutocompleteProps = {
   value: string;
   onChange: (value: string) => void;
-  onLocationSelect: (location: { address: string; lat: number; lng: number }) => void;
+  onLocationSelect: (location: { address: string; lat: number; lng: number; locationName: string; addressLine: string }) => void;
   placeholder?: string;
   required?: boolean;
 };
@@ -106,11 +106,17 @@ export default function LocationAutocomplete({
 
   function handleSelectSuggestion(suggestion: LocationSuggestion) {
     const formattedAddress = suggestion.display_name;
+    const parts = formattedAddress.split(",");
+    const locationName = parts[0]?.trim() || formattedAddress;
+    const addressLine = parts.slice(1).join(",").trim() || formattedAddress;
+
     onChange(formattedAddress);
     onLocationSelect({
       address: formattedAddress,
       lat: parseFloat(suggestion.lat),
       lng: parseFloat(suggestion.lon),
+      locationName,
+      addressLine,
     });
     setSuggestions([]);
     setIsOpen(false);
@@ -141,14 +147,14 @@ export default function LocationAutocomplete({
         onFocus={() => value.length >= 3 && suggestions.length > 0 && setIsOpen(true)}
         placeholder={placeholder}
         required={required}
-        className="w-full px-4 py-2 border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+        className="w-full px-4 py-2 border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
       />
 
       {/* Loading indicator */}
       {isLoading && (
         <div className="absolute right-3 top-1/2 -translate-y-1/2">
           <svg
-            className="animate-spin h-5 w-5 text-emerald-500"
+            className="animate-spin h-5 w-5 text-orange-500"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -175,7 +181,7 @@ export default function LocationAutocomplete({
         <div className="absolute z-10 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
           {isLoading ? (
             <div className="px-4 py-6 text-center">
-              <div className="flex items-center justify-center gap-2 text-emerald-600">
+              <div className="flex items-center justify-center gap-2 text-orange-500">
                 <svg
                   className="animate-spin h-5 w-5"
                   xmlns="http://www.w3.org/2000/svg"
@@ -205,7 +211,7 @@ export default function LocationAutocomplete({
                 key={index}
                 type="button"
                 onClick={() => handleSelectSuggestion(suggestion)}
-                className="w-full px-4 py-3 text-left hover:bg-emerald-50 transition-colors border-b border-zinc-100 last:border-b-0"
+                className="w-full px-4 py-3 text-left hover:bg-orange-50 transition-colors border-b border-zinc-100 last:border-b-0"
               >
                 <div className="flex items-start gap-2">
                   <span className="text-lg mt-0.5">📍</span>
@@ -233,9 +239,9 @@ export default function LocationAutocomplete({
       {/* Helper text */}
       <p className="text-xs mt-1 flex items-center gap-1">
         {isLoading ? (
-          <span className="text-emerald-600 font-medium animate-pulse">⏳ Searching...</span>
+          <span className="text-orange-500 font-medium animate-pulse">⏳ Searching...</span>
         ) : searchAttempted && !isLoading && suggestions.length > 0 ? (
-          <span className="text-emerald-600">✓ {suggestions.length} location{suggestions.length !== 1 ? 's' : ''} found - select one below</span>
+          <span className="text-orange-500">✓ {suggestions.length} location{suggestions.length !== 1 ? 's' : ''} found - select one below</span>
         ) : value.length > 0 && value.length < 3 ? (
           <span className="text-zinc-500">Type at least 3 characters to search</span>
         ) : (

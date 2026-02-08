@@ -3,7 +3,6 @@
 interface Activity {
   id: string;
   name: string;
-  gradient: string;
 }
 
 interface ActivityCardProps {
@@ -13,16 +12,15 @@ interface ActivityCardProps {
 }
 
 export const ACTIVITIES: Activity[] = [
-  { id: 'running', name: 'Running', gradient: 'from-orange-400 to-amber-500' },
-  { id: 'tennis', name: 'Tennis', gradient: 'from-green-400 to-emerald-500' },
-  { id: 'cycling', name: 'Cycling', gradient: 'from-blue-400 to-cyan-500' },
-  { id: 'gym', name: 'Gym', gradient: 'from-purple-400 to-violet-500' },
-  { id: 'yoga', name: 'Yoga', gradient: 'from-pink-400 to-rose-500' },
-  { id: 'basketball', name: 'Basketball', gradient: 'from-orange-500 to-red-500' },
-  { id: 'soccer', name: 'Soccer', gradient: 'from-green-500 to-teal-500' },
-  { id: 'swimming', name: 'Swimming', gradient: 'from-cyan-400 to-blue-500' },
-  { id: 'hiking', name: 'Hiking', gradient: 'from-amber-600 to-yellow-700' },
-  { id: 'other', name: 'Other', gradient: 'from-zinc-400 to-zinc-500' },
+  { id: 'running', name: 'Running' },
+  { id: 'tennis', name: 'Tennis' },
+  { id: 'cycling', name: 'Cycling' },
+  { id: 'gym', name: 'Gym' },
+  { id: 'yoga', name: 'Yoga' },
+  { id: 'basketball', name: 'Basketball' },
+  { id: 'soccer', name: 'Soccer' },
+  { id: 'hiking', name: 'Hiking' },
+  { id: 'other', name: 'Other' },
 ];
 
 function ActivityIcon({ id, className }: { id: string; className?: string }) {
@@ -81,14 +79,6 @@ function ActivityIcon({ id, className }: { id: string; className?: string }) {
           <path strokeLinecap="round" d="M12 3v4M12 16v5M3.5 9l3.5 1M17 10l3.5-1M3.5 15l3.5-1.5M17 13.5l3.5 1.5" />
         </svg>
       );
-    case 'swimming':
-      return (
-        <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 17c1.5-1 3-1 4.5 0s3 1 4.5 0 3-1 4.5 0 3 1 4.5 0" />
-          <circle cx="7" cy="9" r="2" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 10l5-2 4 3" />
-        </svg>
-      );
     case 'hiking':
       return (
         <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -112,25 +102,18 @@ export default function ActivityCard({ activity, selected, onSelect }: ActivityC
       onClick={() => onSelect(activity.id)}
       className={`
         relative p-6 rounded-2xl cursor-pointer transition-all duration-200
-        bg-gradient-to-br ${activity.gradient}
-        hover:scale-105 hover:shadow-xl
+        bg-zinc-100 flex flex-col items-center text-center
+        hover:scale-105 hover:shadow-lg
         ${selected
-          ? 'ring-4 ring-emerald-500 ring-offset-2 scale-105 shadow-xl'
-          : 'hover:ring-2 hover:ring-white/50'
+          ? 'ring-2 ring-yellow-400 ring-offset-2 scale-105 shadow-lg'
+          : 'hover:ring-2 hover:ring-zinc-300'
         }
       `}
     >
-      {selected && (
-        <div className="absolute top-2 right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
-          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-      )}
-      <div className="text-white mb-2">
-        <ActivityIcon id={activity.id} />
+      <div className="text-zinc-900 mb-3">
+        <ActivityIcon id={activity.id} className="w-10 h-10" />
       </div>
-      <div className="text-white font-semibold text-sm">{activity.name}</div>
+      <div className="text-zinc-900 font-semibold text-sm">{activity.name}</div>
     </button>
   );
 }

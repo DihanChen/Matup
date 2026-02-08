@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
-import Navbar from "@/components/Navbar";
 import LocationAutocomplete from "@/components/LocationAutocomplete";
 
 const SPORT_TYPES = [
@@ -16,7 +15,6 @@ const SPORT_TYPES = [
   "Yoga",
   "Basketball",
   "Soccer",
-  "Swimming",
   "Hiking",
   "Other",
 ];
@@ -59,6 +57,8 @@ export default function EditEventPage() {
   const [duration, setDuration] = useState(60);
   const [skillLevel, setSkillLevel] = useState("all");
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationName, setLocationName] = useState("");
+  const [addressLine, setAddressLine] = useState("");
 
   useEffect(() => {
     const supabase = createClient();
@@ -149,6 +149,8 @@ export default function EditEventPage() {
         max_participants: maxParticipants,
         latitude: coordinates?.lat || null,
         longitude: coordinates?.lng || null,
+        location_name: locationName || location.split(",")[0]?.trim() || null,
+        address_line: addressLine || null,
       })
       .eq("id", eventId)
       .eq("creator_id", user?.id);
@@ -170,8 +172,7 @@ export default function EditEventPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd]">
-        <Navbar />
+      <div className="min-h-screen bg-white">
         <div className="flex items-center justify-center py-20">
           <div className="text-zinc-500">Loading...</div>
         </div>
@@ -181,13 +182,12 @@ export default function EditEventPage() {
 
   if (error && !event) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd]">
-        <Navbar />
+      <div className="min-h-screen bg-white">
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <div className="text-6xl mb-4">😕</div>
             <p className="text-zinc-500 mb-4">{error}</p>
-            <Link href="/events" className="text-emerald-600 hover:underline">
+            <Link href="/events" className="text-orange-500 hover:underline">
               Back to events
             </Link>
           </div>
@@ -197,33 +197,34 @@ export default function EditEventPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd]">
-      <Navbar />
+    <div className="min-h-screen bg-white">
 
       <main className="max-w-2xl mx-auto px-6 py-8">
         <Link
           href={`/events/${eventId}`}
-          className="inline-flex items-center text-zinc-600 hover:text-emerald-600 mb-6 font-medium"
+          className="inline-flex items-center text-zinc-600 hover:text-orange-500 mb-6 font-medium"
         >
           ← Back to event
         </Link>
 
-        <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden">
-          <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-6">
-            <h1 className="text-2xl font-bold text-white">Edit Event</h1>
-            <p className="text-white/80">Update your event details</p>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-zinc-900">
+            Edit <span className="text-orange-500">Event</span>
+          </h1>
+          <p className="text-zinc-500 mt-1">Update your event details</p>
+        </div>
 
+        <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden">
           <form onSubmit={handleSubmit} className="p-6">
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
-                ❌ {error}
+                {error}
               </div>
             )}
 
             {success && (
-              <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-sm">
-                ✅ Event updated! Redirecting...
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">
+                Event updated! Redirecting...
               </div>
             )}
 
@@ -242,7 +243,7 @@ export default function EditEventPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
               </div>
 
@@ -259,7 +260,7 @@ export default function EditEventPage() {
                   value={sportType}
                   onChange={(e) => setSportType(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 >
                   <option value="">Select activity</option>
                   {SPORT_TYPES.map((sport) => (
@@ -284,6 +285,8 @@ export default function EditEventPage() {
                   onLocationSelect={(loc) => {
                     setLocation(loc.address);
                     setCoordinates({ lat: loc.lat, lng: loc.lng });
+                    setLocationName(loc.locationName);
+                    setAddressLine(loc.addressLine);
                   }}
                   placeholder="Search for the event location"
                   required
@@ -305,7 +308,7 @@ export default function EditEventPage() {
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     required
-                    className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -321,7 +324,7 @@ export default function EditEventPage() {
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
                     required
-                    className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -339,7 +342,7 @@ export default function EditEventPage() {
                   value={duration}
                   onChange={(e) => setDuration(parseInt(e.target.value))}
                   required
-                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 >
                   <option value="30">30 min</option>
                   <option value="45">45 min</option>
@@ -364,7 +367,7 @@ export default function EditEventPage() {
                   value={skillLevel}
                   onChange={(e) => setSkillLevel(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 >
                   <option value="all">All Levels Welcome</option>
                   <option value="beginner">Beginner</option>
@@ -389,7 +392,7 @@ export default function EditEventPage() {
                   min="2"
                   max="100"
                   required
-                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
               </div>
 
@@ -406,7 +409,7 @@ export default function EditEventPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={4}
-                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   placeholder="Tell people what to expect..."
                 />
               </div>
@@ -416,13 +419,13 @@ export default function EditEventPage() {
                 <button
                   type="submit"
                   disabled={saving || success}
-                  className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold hover:from-emerald-600 hover:to-teal-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3 bg-orange-500 text-white rounded-full font-bold hover:bg-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {saving ? "Saving..." : success ? "Saved!" : "💾 Save Changes"}
+                  {saving ? "Saving..." : success ? "Saved!" : "Save Changes"}
                 </button>
                 <Link
                   href={`/events/${eventId}`}
-                  className="px-6 py-3 border border-zinc-300 text-zinc-700 rounded-xl font-medium hover:bg-zinc-50 transition-colors text-center"
+                  className="px-6 py-3 border border-zinc-300 text-zinc-700 rounded-full font-medium hover:bg-zinc-50 transition-colors text-center"
                 >
                   Cancel
                 </Link>

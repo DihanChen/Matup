@@ -149,7 +149,7 @@ Sign up here: ${eventUrl}`;
               onClick={() => setTemplateType("upcoming")}
               className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
                 templateType === "upcoming"
-                  ? "bg-emerald-600 text-white"
+                  ? "bg-orange-500 text-white"
                   : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
               }`}
             >
@@ -172,7 +172,7 @@ Sign up here: ${eventUrl}`;
             <div className="rounded-xl overflow-hidden bg-zinc-100 w-52 aspect-[9/16] relative">
               {isLoadingPreview ? (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-zinc-300 border-t-emerald-600" />
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-zinc-300 border-t-orange-500" />
                 </div>
               ) : previewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -193,7 +193,7 @@ Sign up here: ${eventUrl}`;
           <button
             onClick={handleShare}
             disabled={isGenerating || isSharing || isLoadingPreview}
-            className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-semibold hover:from-emerald-600 hover:to-teal-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isGenerating ? (
               <>
@@ -250,7 +250,7 @@ Sign up here: ${eventUrl}`;
                   viewBox="0 0 24 24"
                   strokeWidth={2}
                   stroke="currentColor"
-                  className="w-5 h-5 text-emerald-500"
+                  className="w-5 h-5 text-orange-500"
                 >
                   <path
                     strokeLinecap="round"
@@ -258,7 +258,7 @@ Sign up here: ${eventUrl}`;
                     d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
                   />
                 </svg>
-                <span className="text-emerald-600">Invite Copied!</span>
+                <span className="text-orange-500">Invite Copied!</span>
               </>
             ) : (
               <>

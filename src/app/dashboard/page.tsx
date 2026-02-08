@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
-import Navbar from "@/components/Navbar";
-import { formatShortAddress } from "@/lib/formatAddress";
+import EventCard from "@/components/EventCard";
 
 type Event = {
   id: string;
@@ -15,25 +14,22 @@ type Event = {
   location: string;
   datetime: string;
   max_participants: number;
+  skill_level?: string;
   creator_id: string;
+  cover_url?: string | null;
+  participant_count?: number;
 };
+
+type Tab = "hosting" | "joining" | "past";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<Tab>("hosting");
   const [createdEvents, setCreatedEvents] = useState<Event[]>([]);
   const [joinedEvents, setJoinedEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
-  const [showPastEvents, setShowPastEvents] = useState(false);
-  const pastEventsRef = useRef<HTMLElement>(null);
-
-  const scrollToPastEvents = () => {
-    setShowPastEvents(true);
-    setTimeout(() => {
-      pastEventsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
-  };
 
   useEffect(() => {
     const supabase = createClient();
@@ -48,6 +44,7 @@ export default function DashboardPage() {
 
       setUser(user);
 
+      // Fetch events I'm hosting (upcoming)
       const { data: created } = await supabase
         .from("events")
         .select("*")
@@ -57,6 +54,7 @@ export default function DashboardPage() {
 
       setCreatedEvents(created || []);
 
+      // Fetch events I've joined (upcoming, not my own)
       const { data: participations } = await supabase
         .from("event_participants")
         .select("event_id")
@@ -76,6 +74,7 @@ export default function DashboardPage() {
         setJoinedEvents(joined || []);
       }
 
+      // Fetch past events (both hosted and joined)
       const { data: pastCreated } = await supabase
         .from("events")
         .select("*")
@@ -116,10 +115,42 @@ export default function DashboardPage() {
     fetchData();
   }, [router]);
 
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "hosting", label: "Hosting" },
+    { id: "joining", label: "Joining" },
+    { id: "past", label: "Past" },
+  ];
+
+  const getActiveEvents = () => {
+    switch (activeTab) {
+      case "hosting": return createdEvents;
+      case "joining": return joinedEvents;
+      case "past": return pastEvents;
+    }
+  };
+
+  const getEmptyMessage = () => {
+    switch (activeTab) {
+      case "hosting": return "You haven't created any events yet.";
+      case "joining": return "You haven't joined any events yet.";
+      case "past": return "No past events yet. Your event history will appear here.";
+    }
+  };
+
+  const getEmptyAction = () => {
+    switch (activeTab) {
+      case "hosting":
+        return { label: "Create Your First Event", href: "/events/create" };
+      case "joining":
+        return { label: "Browse Events", href: "/events" };
+      default:
+        return null;
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd]">
-        <Navbar />
+      <div className="min-h-screen bg-white">
         <div className="flex items-center justify-center py-20">
           <div className="text-zinc-500">Loading...</div>
         </div>
@@ -127,227 +158,72 @@ export default function DashboardPage() {
     );
   }
 
+  const events = getActiveEvents();
+  const emptyAction = getEmptyAction();
+
   return (
-    <div className="min-h-screen bg-[#fbfbfd]">
-      <Navbar />
+    <div className="min-h-screen bg-white">
 
-      <main className="max-w-[980px] mx-auto px-6 py-8">
-        <h1 className="text-3xl font-semibold text-zinc-900 mb-8 tracking-tight">
-          Welcome, {user?.user_metadata?.name || "there"}
-        </h1>
-
-        {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-4 mb-12">
-          <Link
-            href="/events/create"
-            className="group p-6 bg-white rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all"
-          >
-            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-              <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-semibold text-zinc-900 mb-1">
-              Create Event
-            </h2>
-            <p className="text-sm text-zinc-500">
-              Organize a fitness event
-            </p>
-          </Link>
-
-          <Link
-            href="/events"
-            className="group p-6 bg-white rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all"
-          >
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mb-4">
-              <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-semibold text-zinc-900 mb-1">
-              Find Events
-            </h2>
-            <p className="text-sm text-zinc-500">
-              Browse events near you
-            </p>
-          </Link>
-
-          <button
-            onClick={scrollToPastEvents}
-            className="group p-6 bg-white rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all text-left"
-          >
-            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mb-4">
-              <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-semibold text-zinc-900 mb-1">
-              Past Events
-            </h2>
-            <p className="text-sm text-zinc-500">
-              View your event history
-            </p>
-          </button>
+      <main className="max-w-[980px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold text-zinc-900 mb-2">
+            My <span className="text-orange-500">Activities</span>
+          </h1>
+          <p className="text-zinc-500">Manage your upcoming and past events</p>
         </div>
 
-        {/* Events I'm Hosting */}
-        <section className="mb-12">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-zinc-900">
-              Events I&apos;m Hosting
-            </h2>
-            <span className="text-sm text-zinc-500">
-              {createdEvents.length} upcoming
-            </span>
-          </div>
-
-          {createdEvents.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-zinc-200 p-8 text-center">
-              <p className="text-zinc-500 mb-4">
-                You haven&apos;t created any events yet.
-              </p>
-              <Link
-                href="/events/create"
-                className="inline-block px-5 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors"
-              >
-                Create Your First Event
-              </Link>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {createdEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Events I've Joined */}
-        <section className="mb-12">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-zinc-900">
-              Events I&apos;ve Joined
-            </h2>
-            <span className="text-sm text-zinc-500">
-              {joinedEvents.length} upcoming
-            </span>
-          </div>
-
-          {joinedEvents.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-zinc-200 p-8 text-center">
-              <p className="text-zinc-500 mb-4">
-                You haven&apos;t joined any events yet.
-              </p>
-              <Link
-                href="/events"
-                className="inline-block px-5 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors"
-              >
-                Browse Events
-              </Link>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {joinedEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Past Events */}
-        <section ref={pastEventsRef}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-zinc-900">
-              Past Events
-            </h2>
+        {/* Tabs */}
+        <div className="flex items-center gap-6 border-b border-zinc-200 mb-8">
+          {tabs.map((tab) => (
             <button
-              onClick={() => setShowPastEvents(!showPastEvents)}
-              className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`pb-3 text-sm font-medium transition-colors relative ${
+                activeTab === tab.id
+                  ? "text-zinc-900"
+                  : "text-zinc-400 hover:text-zinc-600"
+              }`}
             >
-              {showPastEvents ? "Hide" : `Show (${pastEvents.length})`}
+              {tab.label}
+              {activeTab === tab.id && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-zinc-900 rounded-full" />
+              )}
             </button>
-          </div>
+          ))}
+        </div>
 
-          {showPastEvents && (
-            pastEvents.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-zinc-200 p-8 text-center">
-                <p className="text-zinc-500">
-                  No past events yet. Your event history will appear here.
-                </p>
-              </div>
-            ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pastEvents.map((event) => (
-                  <EventCard
-                    key={event.id}
-                    event={event}
-                    showHostBadge={event.creator_id === user?.id}
-                    isPast
-                  />
-                ))}
-              </div>
-            )
-          )}
-        </section>
+        {/* Event Grid */}
+        {events.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-zinc-200 p-8 sm:p-12 text-center">
+            <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+              </svg>
+            </div>
+            <p className="text-zinc-500 mb-4">{getEmptyMessage()}</p>
+            {emptyAction && (
+              <Link
+                href={emptyAction.href}
+                className="inline-block px-6 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors"
+              >
+                {emptyAction.label}
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {events.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                variant={activeTab === "past" ? "past" : activeTab === "hosting" ? "hosting" : "default"}
+                showHostBadge={activeTab === "past" && event.creator_id === user?.id}
+              />
+            ))}
+          </div>
+        )}
       </main>
     </div>
-  );
-}
-
-function EventCard({ event, showHostBadge, isPast }: { event: Event; showHostBadge?: boolean; isPast?: boolean }) {
-  const date = new Date(event.datetime);
-  const formattedDate = date.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-  const formattedTime = date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
-  return (
-    <Link
-      href={`/events/${event.id}`}
-      className={`block bg-white rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all p-5 ${isPast ? "opacity-60" : ""}`}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-full capitalize">
-            {event.sport_type}
-          </span>
-          {isPast && (
-            <span className="px-2.5 py-1 bg-zinc-100 text-zinc-500 text-xs font-medium rounded-full">
-              Completed
-            </span>
-          )}
-        </div>
-        {showHostBadge && (
-          <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
-            Host
-          </span>
-        )}
-      </div>
-
-      <h3 className="font-semibold text-zinc-900 mb-3">
-        {event.title}
-      </h3>
-
-      <div className="text-sm text-zinc-500 space-y-1.5">
-        <p className="flex items-center gap-2" title={event.location}>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span className="truncate">{formatShortAddress(event.location)}</span>
-        </p>
-        <p className="flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          {formattedDate} at {formattedTime}
-        </p>
-      </div>
-    </Link>
   );
 }

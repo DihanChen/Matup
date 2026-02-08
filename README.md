@@ -1,13 +1,25 @@
 # MatUp Frontend
 
-A fitness partner matching platform where users can find workout partners, join fitness events, and build a trusted fitness community.
+A fitness partner matching web app for discovering events and leagues, meeting partners, and building a local community.
 
 ## Tech Stack
+- Next.js 16 (App Router) + React 19
+- TypeScript (strict)
+- Tailwind CSS v4
+- Supabase (auth, data, storage)
+- Prisma + web-push (push subscription storage and delivery)
+- html2canvas (shareable event images)
 
-- **Framework:** Next.js 16 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS
-- **Package Manager:** npm
+## Features
+- Auth and profiles with avatar upload and activity preferences.
+- Events: browse, create, edit, join/leave, reviews/comments, and shareable templates.
+- Leagues: create, join/leave, record matches, and view standings across formats.
+- Friends and public user profiles.
+- Push notifications for nearby events (service worker + VAPID).
+- Location autocomplete via Nominatim (debounced to 1 req/sec).
+
+## Design References
+- Latest UI screenshots live in `design/` (Intro, Explore, CreateEvent, EventDetail).
 
 ## Getting Started
 
@@ -18,72 +30,78 @@ npm install
 # Run development server
 npm run dev
 
-# Build for production
+# Build for production (includes prisma generate)
 npm run build
 
 # Start production server
 npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open http://localhost:3000 in your browser.
 
 ## Project Structure
 
 ```
 src/
 ├── app/
-│   ├── page.tsx           # Landing page
-│   ├── layout.tsx         # Root layout
-│   ├── globals.css        # Global styles
-│   ├── login/
-│   │   └── page.tsx       # Login page
-│   ├── signup/
-│   │   └── page.tsx       # Signup page
-│   ├── events/
-│   │   └── page.tsx       # Events listing
-│   ├── profile/           # User profiles (TODO)
-│   └── dashboard/         # User dashboard (TODO)
-├── components/            # Reusable components (TODO)
-└── lib/                   # Utilities, API client (TODO)
+│   ├── api/push/          # Push notification routes
+│   ├── events/            # Event pages (list/create/detail/edit)
+│   ├── leagues/           # League pages (list/create/detail/record)
+│   ├── dashboard/         # User dashboard
+│   ├── friends/           # Friend management
+│   ├── profile/           # Profile editor
+│   ├── users/[id]/        # Public user profile
+│   ├── login/             # Auth (sign in)
+│   └── signup/            # Auth (sign up)
+├── components/            # Reusable UI components
+├── hooks/                 # Client hooks (push notifications)
+└── lib/                   # Utilities, API clients, push helpers
 ```
 
-## Available Routes
+## Routes
 
 | Route | Description |
 |-------|-------------|
 | `/` | Landing page |
-| `/login` | User login |
-| `/signup` | User registration |
-| `/events` | Browse fitness events |
+| `/login` | Sign in |
+| `/signup` | Sign up |
+| `/dashboard` | User dashboard |
+| `/events` | Browse events |
+| `/events/create` | Create event |
+| `/events/[id]` | Event detail |
+| `/events/[id]/edit` | Edit event |
+| `/leagues` | Browse leagues |
+| `/leagues/create` | Create league |
+| `/leagues/[id]` | League detail |
+| `/leagues/[id]/record` | Record league results |
+| `/friends` | Friends |
+| `/profile` | Profile editor |
+| `/users/[id]` | Public user profile |
 
-## Development
+## API Routes
 
-The app uses hot reload - changes to files automatically update in the browser.
+| Route | Description |
+|-------|-------------|
+| `/api/push/vapid-public-key` | Get VAPID public key |
+| `/api/push/subscribe` | Save push subscription |
+| `/api/push/unsubscribe` | Remove push subscription |
+| `/api/push/send` | Notify nearby users |
 
-### Key files to know
-
-- `src/app/layout.tsx` - Global layout, metadata, fonts
-- `src/app/globals.css` - Tailwind config and global styles
-- `src/app/page.tsx` - Landing page
-
-### Adding a new page
-
-Create a folder with `page.tsx` inside `src/app/`:
+## Environment Variables
 
 ```
-src/app/my-new-page/page.tsx  →  /my-new-page
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_KEY=
+DATABASE_URL=
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=
 ```
 
-## MVP Roadmap
-
-- [ ] Supabase integration (auth + database)
-- [ ] User authentication (signup/login/logout)
-- [ ] User profiles
-- [ ] Create event form
-- [ ] Event detail page with join functionality
-- [ ] User dashboard
-- [ ] Basic ratings system
-- [ ] Deploy to Vercel
+Notes:
+- `SUPABASE_SERVICE_KEY` is server-only (used in API routes).
+- `DATABASE_URL` is required for Prisma (push subscriptions).
 
 ## Learn More
 
