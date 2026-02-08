@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 type EventCardEvent = {
   id: string;
@@ -28,6 +29,17 @@ interface EventCardProps {
   compact?: boolean;
 }
 
+const COVER_FALLBACKS: Record<string, string> = {
+  soccer: "/covers/soccer.jpg",
+  tennis: "/covers/tennis.jpg",
+  basketball: "/covers/basketball.jpg",
+  running: "/covers/running.jpg",
+  cycling: "/covers/cycling.jpg",
+  gym: "/covers/gym.jpg",
+  yoga: "/covers/yoga.jpg",
+  hiking: "/covers/hiking.jpg",
+};
+
 function formatDistance(km: number): string {
   if (km < 1) {
     return `${Math.round(km * 1000)}m`;
@@ -36,6 +48,15 @@ function formatDistance(km: number): string {
 }
 
 export default function EventCard({ event, variant = "default", onJoin, showHostBadge, currentUserId, compact = false }: EventCardProps) {
+  const [coverError, setCoverError] = useState(false);
+  const hasCover = typeof event.cover_url === "string" && event.cover_url.trim() !== "";
+  const fallbackCover = COVER_FALLBACKS[event.sport_type] || "/covers/gym.jpg";
+  const coverSrc = coverError || !hasCover ? fallbackCover : event.cover_url!;
+
+  useEffect(() => {
+    setCoverError(false);
+  }, [event.cover_url, event.sport_type]);
+
   const date = new Date(event.datetime);
   const formattedDate = date.toLocaleDateString("en-US", {
     weekday: compact ? "short" : "long",
@@ -64,18 +85,14 @@ export default function EventCard({ event, variant = "default", onJoin, showHost
       {/* Cover Photo */}
       <div className={`relative ${compact ? "h-24" : "h-40"} bg-zinc-100 overflow-hidden`}>
         <Image
-          src={event.cover_url || `/covers/${event.sport_type}.jpg`}
+          src={coverSrc}
           alt={event.title}
           fill
           sizes={compact ? "(max-width: 768px) 100vw, 25vw" : "(max-width: 768px) 100vw, 33vw"}
           quality={compact ? 60 : 75}
           className="object-cover"
-          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          onError={() => setCoverError(true)}
         />
-        {/* Fallback icon when no image loads */}
-        <div className="absolute inset-0 flex items-center justify-center -z-10">
-          <SportIcon sport={event.sport_type} className={compact ? "w-8 h-8 text-zinc-300" : "w-12 h-12 text-zinc-300"} />
-        </div>
 
         {/* Top badges */}
         <div className={`absolute ${compact ? "top-2 left-2" : "top-3 left-3"} flex items-center gap-1.5`}>
@@ -232,43 +249,4 @@ export default function EventCard({ event, variant = "default", onJoin, showHost
       </div>
     </div>
   );
-}
-
-function SportIcon({ sport, className }: { sport: string; className?: string }) {
-  const c = className || "w-8 h-8";
-  switch (sport) {
-    case "soccer":
-      return (
-        <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <circle cx="12" cy="12" r="9" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 7l3 2.5v4L12 16l-3-2.5v-4L12 7z" />
-        </svg>
-      );
-    case "tennis":
-      return (
-        <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <circle cx="12" cy="12" r="9" />
-          <path strokeLinecap="round" d="M3.5 12c0-2 3.8-3.5 8.5-3.5s8.5 1.5 8.5 3.5M3.5 12c0 2 3.8 3.5 8.5 3.5s8.5-1.5 8.5-3.5" />
-        </svg>
-      );
-    case "basketball":
-      return (
-        <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <circle cx="12" cy="12" r="9" />
-          <path strokeLinecap="round" d="M12 3v18M3 12h18" />
-        </svg>
-      );
-    case "running":
-      return (
-        <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0" />
-        </svg>
-      );
-    default:
-      return (
-        <svg className={c} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <circle cx="12" cy="12" r="9" />
-        </svg>
-      );
-  }
 }

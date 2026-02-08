@@ -459,7 +459,7 @@ export default function CreateEventPage() {
                   <p className="text-2xl md:text-3xl font-extrabold leading-snug">
                     I&apos;m hosting a{' '}
                     <span className="text-orange-500">
-                      {getSelectedActivity()?.name || '...'} game
+                      {getSelectedActivity()?.name || '...'} session
                     </span>{' '}
                     at{' '}
                     <span className="text-orange-500">

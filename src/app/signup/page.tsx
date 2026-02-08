@@ -72,9 +72,8 @@ export default function SignupPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-6">
             <svg width="40" height="40" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-zinc-900 mx-auto">
-              <circle cx="16" cy="6" r="3" fill="currentColor"/>
-              <path d="M10 14c0-1 1.5-3 6-3s6 2 6 3l-2 8h-2l1-6h-1l-2 10h-2L12 16h-1l1 6h-2l-2-8z" fill="currentColor"/>
-              <path d="M8 26l4-4M24 26l-4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <rect x="3" y="15" width="12" height="12" rx="2.5" fill="currentColor"/>
+              <rect x="17" y="5" width="12" height="12" rx="2.5" fill="currentColor"/>
             </svg>
           </Link>
           <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">
