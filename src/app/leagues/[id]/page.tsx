@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { getApiBaseUrl } from "@/lib/api";
 import type { User } from "@supabase/supabase-js";
 import {
   calculateStandings,
@@ -98,6 +99,12 @@ export default function LeagueDetailPage() {
   const [generating, setGenerating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
 
   const currentMember = members.find((m) => m.user_id === user?.id);
   const isOwnerOrAdmin =
@@ -106,6 +113,7 @@ export default function LeagueDetailPage() {
   const isFull = members.length >= (league?.max_members || 0);
   const isTennis = league?.scoring_format === "singles" || league?.scoring_format === "doubles";
   const isDoubles = league?.scoring_format === "doubles";
+  const emailRecipientCount = members.filter((m) => m.user_id !== user?.id).length;
 
   useEffect(() => {
     async function fetchData() {
@@ -420,6 +428,84 @@ export default function LeagueDetailPage() {
     }
 
     router.push("/leagues");
+  }
+
+  function openEmailModal() {
+    if (!league) return;
+    setEmailError(null);
+    setEmailSuccess(null);
+    setEmailSubject((prev) => prev || `League Update: ${league.name}`);
+    setEmailMessage((prev) => prev || "");
+    setShowEmailModal(true);
+  }
+
+  function closeEmailModal() {
+    setShowEmailModal(false);
+    setEmailError(null);
+    setEmailSuccess(null);
+  }
+
+  async function handleSendEmail() {
+    if (!league || !user) return;
+    const trimmedSubject = emailSubject.trim();
+    const trimmedMessage = emailMessage.trim();
+
+    if (!trimmedSubject || !trimmedMessage) {
+      setEmailError("Subject and message are required.");
+      return;
+    }
+
+    if (emailRecipientCount === 0) {
+      setEmailError("No members to email yet.");
+      return;
+    }
+
+    setSendingEmail(true);
+    setEmailError(null);
+    setEmailSuccess(null);
+
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setEmailError("You must be logged in to send emails.");
+      setSendingEmail(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/email/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          type: "league",
+          id: league.id,
+          subject: trimmedSubject,
+          message: trimmedMessage,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        setEmailError(data?.error || "Failed to send email.");
+        setSendingEmail(false);
+        return;
+      }
+
+      const data = await response.json();
+      const failedCount = data?.failed?.length || 0;
+      const successText = failedCount
+        ? `Sent to ${data.sent} members (${failedCount} failed).`
+        : `Sent to ${data.sent} members.`;
+      setEmailSuccess(successText);
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : "Failed to send email.");
+    } finally {
+      setSendingEmail(false);
+    }
   }
 
   const getInitials = (name: string | null) => {
@@ -952,6 +1038,15 @@ export default function LeagueDetailPage() {
                 </Link>
               )}
 
+              {currentMember?.role === "owner" && (
+                <button
+                  onClick={openEmailModal}
+                  className="w-full py-3 border border-zinc-200 text-zinc-700 rounded-full font-medium hover:bg-zinc-50 transition-colors"
+                >
+                  Email Members
+                </button>
+              )}
+
               {isOwnerOrAdmin && isTennis && scheduledMatches.length === 0 && members.length >= (isDoubles ? 4 : 2) && (
                 <button
                   onClick={handleGenerateSchedule}
@@ -1011,6 +1106,75 @@ export default function LeagueDetailPage() {
                 </p>
               )}
             </div>
+
+            {/* Email Members Modal */}
+            {showEmailModal && league && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl max-w-lg w-full p-6">
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-zinc-900">Email members</h3>
+                      <p className="text-sm text-zinc-500">
+                        Send a message to {emailRecipientCount} member{emailRecipientCount === 1 ? "" : "s"}.
+                      </p>
+                    </div>
+                    <button
+                      onClick={closeEmailModal}
+                      className="text-zinc-400 hover:text-zinc-600"
+                      aria-label="Close email modal"
+                    >
+                      X
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-2">Subject</label>
+                      <input
+                        value={emailSubject}
+                        onChange={(e) => setEmailSubject(e.target.value)}
+                        placeholder="League update subject"
+                        className="w-full px-4 py-2 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 mb-2">Message</label>
+                      <textarea
+                        value={emailMessage}
+                        onChange={(e) => setEmailMessage(e.target.value)}
+                        rows={5}
+                        placeholder="Share announcements or scheduling details..."
+                        className="w-full px-4 py-2 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {emailError && (
+                    <p className="text-sm text-red-500 mt-3">{emailError}</p>
+                  )}
+                  {emailSuccess && (
+                    <p className="text-sm text-emerald-600 mt-3">{emailSuccess}</p>
+                  )}
+
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={handleSendEmail}
+                      disabled={sendingEmail}
+                      className="flex-1 py-3 bg-zinc-900 text-white rounded-full font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                    >
+                      {sendingEmail ? "Sending..." : "Send Email"}
+                    </button>
+                    <button
+                      onClick={closeEmailModal}
+                      disabled={sendingEmail}
+                      className="flex-1 py-3 border border-zinc-200 text-zinc-700 rounded-full font-medium hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* League Info */}
             <div className="bg-white rounded-2xl border border-zinc-200 p-6">

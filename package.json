@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@react-email/components": "^0.0.22",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.93.2",
     "html2canvas": "^1.4.1",
@@ -17,6 +18,8 @@
     "prisma": "^5.22.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-email": "^2.1.0",
+    "resend": "^4.0.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
