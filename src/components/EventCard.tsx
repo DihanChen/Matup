@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type EventCardEvent = {
   id: string;
@@ -32,6 +32,7 @@ interface EventCardProps {
 const COVER_FALLBACKS: Record<string, string> = {
   soccer: "/covers/soccer.jpg",
   tennis: "/covers/tennis.jpg",
+  pickleball: "/covers/tennis.jpg",
   basketball: "/covers/basketball.jpg",
   running: "/covers/running.jpg",
   cycling: "/covers/cycling.jpg",
@@ -48,14 +49,12 @@ function formatDistance(km: number): string {
 }
 
 export default function EventCard({ event, variant = "default", onJoin, showHostBadge, currentUserId, compact = false }: EventCardProps) {
-  const [coverError, setCoverError] = useState(false);
-  const hasCover = typeof event.cover_url === "string" && event.cover_url.trim() !== "";
+  const [erroredCoverKey, setErroredCoverKey] = useState<string | null>(null);
   const fallbackCover = COVER_FALLBACKS[event.sport_type] || "/covers/gym.jpg";
-  const coverSrc = coverError || !hasCover ? fallbackCover : event.cover_url!;
-
-  useEffect(() => {
-    setCoverError(false);
-  }, [event.cover_url, event.sport_type]);
+  const customCover = typeof event.cover_url === "string" ? event.cover_url.trim() : "";
+  const hasCustomCover = customCover.length > 0;
+  const coverKey = hasCustomCover ? customCover : fallbackCover;
+  const coverSrc = !hasCustomCover || erroredCoverKey === coverKey ? fallbackCover : customCover;
 
   const date = new Date(event.datetime);
   const formattedDate = date.toLocaleDateString("en-US", {
@@ -91,7 +90,7 @@ export default function EventCard({ event, variant = "default", onJoin, showHost
           sizes={compact ? "(max-width: 768px) 100vw, 25vw" : "(max-width: 768px) 100vw, 33vw"}
           quality={compact ? 60 : 75}
           className="object-cover"
-          onError={() => setCoverError(true)}
+          onError={() => setErroredCoverKey(coverKey)}
         />
 
         {/* Top badges */}

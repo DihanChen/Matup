@@ -9,8 +9,18 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-white px-4">
-          <div className="text-zinc-500">Loading...</div>
+        <div className="min-h-screen bg-white px-4">
+          <main className="max-w-md mx-auto py-16 animate-pulse">
+            <div className="h-8 w-52 bg-zinc-200 rounded-xl mx-auto mb-3" />
+            <div className="h-4 w-64 bg-zinc-100 rounded mx-auto mb-8" />
+            <div className="rounded-2xl border border-zinc-200 p-8 space-y-4">
+              <div className="h-4 w-28 bg-zinc-200 rounded" />
+              <div className="h-12 w-full bg-zinc-100 rounded-xl" />
+              <div className="h-4 w-36 bg-zinc-200 rounded" />
+              <div className="h-12 w-full bg-zinc-100 rounded-xl" />
+              <div className="h-12 w-full bg-zinc-200 rounded-full mt-2" />
+            </div>
+          </main>
         </div>
       }
     >
@@ -88,8 +98,18 @@ function ResetPasswordContent() {
 
   if (!ready) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white px-4">
-        <div className="text-zinc-500">Loading...</div>
+      <div className="min-h-screen bg-white px-4">
+        <main className="max-w-md mx-auto py-16 animate-pulse">
+          <div className="h-8 w-52 bg-zinc-200 rounded-xl mx-auto mb-3" />
+          <div className="h-4 w-64 bg-zinc-100 rounded mx-auto mb-8" />
+          <div className="rounded-2xl border border-zinc-200 p-8 space-y-4">
+            <div className="h-4 w-28 bg-zinc-200 rounded" />
+            <div className="h-12 w-full bg-zinc-100 rounded-xl" />
+            <div className="h-4 w-36 bg-zinc-200 rounded" />
+            <div className="h-12 w-full bg-zinc-100 rounded-xl" />
+            <div className="h-12 w-full bg-zinc-200 rounded-full mt-2" />
+          </div>
+        </main>
       </div>
     );
   }

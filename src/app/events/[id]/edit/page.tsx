@@ -10,6 +10,7 @@ import LocationAutocomplete from "@/components/LocationAutocomplete";
 const SPORT_TYPES = [
   "Running",
   "Tennis",
+  "Pickleball",
   "Cycling",
   "Gym",
   "Yoga",
@@ -173,9 +174,22 @@ export default function EditEventPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-zinc-500">Loading...</div>
-        </div>
+        <main className="max-w-2xl mx-auto px-6 py-8 animate-pulse">
+          <div className="h-4 w-28 bg-zinc-100 rounded mb-6" />
+          <div className="space-y-3 mb-8">
+            <div className="h-10 w-52 bg-zinc-200 rounded-xl" />
+            <div className="h-4 w-64 bg-zinc-100 rounded" />
+          </div>
+          <div className="rounded-2xl border border-zinc-200 p-6 space-y-5">
+            <div className="h-4 w-24 bg-zinc-200 rounded" />
+            <div className="h-12 w-full bg-zinc-100 rounded-xl" />
+            <div className="h-4 w-28 bg-zinc-200 rounded" />
+            <div className="h-12 w-full bg-zinc-100 rounded-xl" />
+            <div className="h-4 w-20 bg-zinc-200 rounded" />
+            <div className="h-24 w-full bg-zinc-100 rounded-xl" />
+            <div className="h-12 w-full bg-zinc-200 rounded-full mt-2" />
+          </div>
+        </main>
       </div>
     );
   }

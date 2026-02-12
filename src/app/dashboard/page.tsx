@@ -151,9 +151,35 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-zinc-500">Loading...</div>
-        </div>
+        <main className="max-w-[980px] mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6 animate-pulse">
+          <div className="space-y-3">
+            <div className="h-9 w-64 bg-zinc-200 rounded-xl" />
+            <div className="h-4 w-80 bg-zinc-100 rounded" />
+          </div>
+
+          <div className="flex items-center gap-6 border-b border-zinc-200 pb-3">
+            {[1, 2, 3].map((tab) => (
+              <div
+                key={`dashboard-tab-skeleton-${tab}`}
+                className="h-4 w-16 rounded bg-zinc-100"
+              />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((card) => (
+              <div
+                key={`dashboard-card-skeleton-${card}`}
+                className="rounded-2xl border border-zinc-200 p-4 space-y-3"
+              >
+                <div className="h-36 rounded-xl bg-zinc-100" />
+                <div className="h-5 w-3/4 rounded bg-zinc-200" />
+                <div className="h-4 w-2/3 rounded bg-zinc-100" />
+                <div className="h-4 w-1/2 rounded bg-zinc-100" />
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }

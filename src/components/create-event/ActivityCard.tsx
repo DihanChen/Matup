@@ -14,6 +14,7 @@ interface ActivityCardProps {
 export const ACTIVITIES: Activity[] = [
   { id: 'running', name: 'Running' },
   { id: 'tennis', name: 'Tennis' },
+  { id: 'pickleball', name: 'Pickleball' },
   { id: 'cycling', name: 'Cycling' },
   { id: 'gym', name: 'Gym' },
   { id: 'yoga', name: 'Yoga' },
@@ -29,17 +30,33 @@ function ActivityIcon({ id, className }: { id: string; className?: string }) {
   switch (id) {
     case 'running':
       return (
-        <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l3-3 4 2-2 4-3-1-2-2z" />
-        </svg>
+  <svg
+    className={iconClass}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M21.481 14.068l-2.2-6.585a1 1 0 00-.949-.683 4.865 4.865 0 01-2.893-.907 7.623 7.623 0 01-1.463-3.113 1 1 0 00-1.683-.487l-6 6a1 1 0 00.016 1.43l12.537 12a1 1 0 001.4-.016l1.654-1.658a3.75 3.75 0 000-5.3 1.751 1.751 0 01-.419-.681zm-.992 4.567l-.967.967L8.43 8.984l4.114-4.114A7.358 7.358 0 0014.03 7.307 6.076 6.076 0 0017.6 8.757l1.983 5.943a3.778 3.778 0 00.906 1.464 1.75 1.75 0 010 2.471zM1 17a1 1 0 011-1h8a1 1 0 010 2H2a1 1 0 01-1-1zm0-4a1 1 0 011-1h4a1 1 0 010 2H2a1 1 0 01-1-1zm0 8a1 1 0 011-1h12a1 1 0 010 2H2a1 1 0 01-1-1z" />
+  </svg>
       );
     case 'tennis':
       return (
         <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <circle cx="12" cy="12" r="9" />
-          <path strokeLinecap="round" d="M3.5 12c0-2 3.8-3.5 8.5-3.5s8.5 1.5 8.5 3.5" />
-          <path strokeLinecap="round" d="M3.5 12c0 2 3.8 3.5 8.5 3.5s8.5-1.5 8.5-3.5" />
+          <circle cx="12" cy="12" r="8" />
+          <path strokeLinecap="round" d="M8.15 4.95Q13.35 12 8.15 19.05" />
+          <path strokeLinecap="round" d="M15.85 4.95Q10.65 12 15.85 19.05" />
+        </svg>
+      );
+    case 'pickleball':
+      return (
+        <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <rect x="4.5" y="3.5" width="8.5" height="12" rx="2.5" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.75 15.5v5m-2 0h4" />
+          <circle cx="16.75" cy="9.5" r="3.75" />
+          <circle cx="16.2" cy="8.3" r="0.45" fill="currentColor" stroke="none" />
+          <circle cx="17.9" cy="8.9" r="0.45" fill="currentColor" stroke="none" />
+          <circle cx="15.7" cy="10.2" r="0.45" fill="currentColor" stroke="none" />
+          <circle cx="17.3" cy="10.9" r="0.45" fill="currentColor" stroke="none" />
         </svg>
       );
     case 'cycling':
@@ -66,9 +83,11 @@ function ActivityIcon({ id, className }: { id: string; className?: string }) {
     case 'basketball':
       return (
         <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <circle cx="12" cy="12" r="9" />
-          <path strokeLinecap="round" d="M12 3v18M3 12h18" />
-          <path strokeLinecap="round" d="M5.5 5.5c2 2 2 5.5 0 7.5m13-7.5c-2 2-2 5.5 0 7.5" />
+          <circle cx="12" cy="12" r="8" />
+          <path strokeLinecap="round" d="M12 4v16" />
+          <path strokeLinecap="round" d="M4 12h16" />
+          <path strokeLinecap="round" d="M7.75 5.25Q10.75 8.15 10.75 12Q10.75 15.85 7.75 18.75" />
+          <path strokeLinecap="round" d="M16.25 5.25Q13.25 8.15 13.25 12Q13.25 15.85 16.25 18.75" />
         </svg>
       );
     case 'soccer':
@@ -83,7 +102,6 @@ function ActivityIcon({ id, className }: { id: string; className?: string }) {
       return (
         <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 21l6-9 4 3 5-8 3 5" />
-          <circle cx="17" cy="7" r="2" />
         </svg>
       );
     default:

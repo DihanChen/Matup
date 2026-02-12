@@ -7,7 +7,6 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { getApiBaseUrl } from "@/lib/api";
 import type { User } from "@supabase/supabase-js";
-import LocationLink from "@/components/LocationLink";
 import EventShareModal from "@/components/share/EventShareModal";
 import { useEventShare } from "@/components/share/useEventShare";
 
@@ -50,13 +49,6 @@ type HostInfo = {
   id: string;
   name: string | null;
   avatar_url: string | null;
-};
-
-type Friendship = {
-  id: string;
-  requester_id: string;
-  addressee_id: string;
-  status: "pending" | "accepted" | "declined";
 };
 
 type EmailTemplate = {
@@ -102,6 +94,11 @@ const EMAIL_TEMPLATES: EmailTemplate[] = [
   },
 ];
 
+function getCoverSrcForSport(sportType: string): string {
+  if (sportType === "pickleball") return "/covers/tennis.jpg";
+  return `/covers/${sportType}.jpg`;
+}
+
 export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -133,9 +130,6 @@ export default function EventDetailPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
-  const [friendships, setFriendships] = useState<Friendship[]>([]);
-  const [friendActionLoading, setFriendActionLoading] = useState<string | null>(null);
-  const [hostEventCount, setHostEventCount] = useState(0);
 
   const {
     isModalOpen: showShareModal,
@@ -192,13 +186,6 @@ export default function EventDetailPage() {
           setHost({ id: eventData.creator_id, name: null, avatar_url: null });
         }
       }
-
-      // Get host event count
-      const { count } = await supabase
-        .from("events")
-        .select("id", { count: "exact", head: true })
-        .eq("creator_id", eventData.creator_id);
-      setHostEventCount(count ?? 0);
 
       // Get participants
       const { data: participantsData } = await supabase
@@ -277,18 +264,6 @@ export default function EventDetailPage() {
           };
         });
         setComments(commentsWithUser);
-      }
-
-      // Get friendships
-      if (user) {
-        const { data: friendshipsData } = await supabase
-          .from("friendships")
-          .select("id, requester_id, addressee_id, status")
-          .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
-
-        if (friendshipsData) {
-          setFriendships(friendshipsData);
-        }
       }
 
       setLoading(false);
@@ -479,90 +454,6 @@ export default function EventDetailPage() {
     setSubmittingComment(false);
   }
 
-  function getFriendshipStatus(otherUserId: string): { status: "none" | "pending_sent" | "pending_received" | "accepted"; friendship?: Friendship } {
-    const friendship = friendships.find(
-      (f) =>
-        (f.requester_id === user?.id && f.addressee_id === otherUserId) ||
-        (f.addressee_id === user?.id && f.requester_id === otherUserId)
-    );
-    if (!friendship) return { status: "none" };
-    if (friendship.status === "accepted") return { status: "accepted", friendship };
-    if (friendship.status === "pending" && friendship.requester_id === user?.id)
-      return { status: "pending_sent", friendship };
-    if (friendship.status === "pending" && friendship.addressee_id === user?.id)
-      return { status: "pending_received", friendship };
-    return { status: "none" };
-  }
-
-  async function handleSendFriendRequest(addresseeId: string) {
-    if (!user) return;
-    setFriendActionLoading(addresseeId);
-    const supabase = createClient();
-    const { data, error } = await supabase.from("friendships").insert({ requester_id: user.id, addressee_id: addresseeId }).select().single();
-    if (!error && data) setFriendships((prev) => [...prev, data]);
-    setFriendActionLoading(null);
-  }
-
-  async function handleRespondFriendRequest(friendshipId: string, newStatus: "accepted" | "declined") {
-    setFriendActionLoading(friendshipId);
-    const supabase = createClient();
-    const { error } = await supabase.from("friendships").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", friendshipId);
-    if (!error) {
-      if (newStatus === "accepted") {
-        setFriendships((prev) => prev.map((f) => (f.id === friendshipId ? { ...f, status: "accepted" } : f)));
-      } else {
-        setFriendships((prev) => prev.filter((f) => f.id !== friendshipId));
-      }
-    }
-    setFriendActionLoading(null);
-  }
-
-  async function handleCancelFriendRequest(friendshipId: string) {
-    setFriendActionLoading(friendshipId);
-    const supabase = createClient();
-    const { error } = await supabase.from("friendships").delete().eq("id", friendshipId);
-    if (!error) setFriendships((prev) => prev.filter((f) => f.id !== friendshipId));
-    setFriendActionLoading(null);
-  }
-
-  function renderFriendButton(otherUserId: string) {
-    if (!user || otherUserId === user.id) return null;
-    const { status, friendship } = getFriendshipStatus(otherUserId);
-    const isLoading = friendActionLoading === otherUserId || friendActionLoading === friendship?.id;
-
-    switch (status) {
-      case "none":
-        return (
-          <button onClick={() => handleSendFriendRequest(otherUserId)} disabled={isLoading}
-            className="text-xs text-orange-500 hover:text-orange-600 px-3 py-1 border border-orange-500 rounded-full hover:bg-orange-50 transition-colors disabled:opacity-50">
-            {isLoading ? "..." : "Add Friend"}
-          </button>
-        );
-      case "pending_sent":
-        return (
-          <button onClick={() => handleCancelFriendRequest(friendship!.id)} disabled={isLoading}
-            className="text-xs text-zinc-500 px-3 py-1 border border-zinc-300 rounded-full hover:bg-zinc-50 transition-colors disabled:opacity-50">
-            {isLoading ? "..." : "Pending"}
-          </button>
-        );
-      case "pending_received":
-        return (
-          <div className="flex gap-1">
-            <button onClick={() => handleRespondFriendRequest(friendship!.id, "accepted")} disabled={isLoading}
-              className="text-xs text-white bg-orange-500 px-2 py-1 rounded-full hover:bg-orange-600 transition-colors disabled:opacity-50">
-              {isLoading ? "..." : "Accept"}
-            </button>
-            <button onClick={() => handleRespondFriendRequest(friendship!.id, "declined")} disabled={isLoading}
-              className="text-xs text-zinc-500 px-2 py-1 border border-zinc-300 rounded-full hover:bg-zinc-50 transition-colors disabled:opacity-50">
-              Decline
-            </button>
-          </div>
-        );
-      case "accepted":
-        return <span className="text-xs text-orange-500 px-2 py-1 bg-orange-50 rounded-full">Friends</span>;
-    }
-  }
-
   async function handleJoin() {
     if (!user) { router.push("/login"); return; }
     setJoining(true);
@@ -609,9 +500,30 @@ export default function EventDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-zinc-500">Loading...</div>
-        </div>
+        <main className="max-w-6xl mx-auto px-6 py-8 animate-pulse">
+          <div className="grid md:grid-cols-5 gap-8">
+            <div className="md:col-span-3 space-y-6">
+              <div className="rounded-2xl border border-zinc-200 overflow-hidden">
+                <div className="h-[280px] md:h-[340px] bg-zinc-100" />
+                <div className="p-6 space-y-4">
+                  <div className="h-6 w-3/4 bg-zinc-200 rounded" />
+                  <div className="h-4 w-1/2 bg-zinc-100 rounded" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                    {[1, 2, 3, 4].map((item) => (
+                      <div key={`event-detail-skeleton-stat-${item}`} className="h-12 rounded bg-zinc-100" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-zinc-200 p-6 h-40 bg-zinc-50" />
+            </div>
+            <div className="md:col-span-2 space-y-6">
+              <div className="rounded-2xl border border-zinc-200 p-5 h-36 bg-zinc-50" />
+              <div className="rounded-2xl border border-zinc-200 p-5 h-44 bg-zinc-50" />
+              <div className="rounded-2xl border border-zinc-200 p-5 h-40 bg-zinc-50" />
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -632,7 +544,6 @@ export default function EventDetailPage() {
   const date = new Date(event.datetime);
   const formattedDate = date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
   const formattedTime = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const spotsLeft = event.max_participants - participants.length;
 
   const getInitials = (name: string | null) => {
     if (!name) return "?";
@@ -652,7 +563,7 @@ export default function EventDetailPage() {
               {/* Cover Photo */}
               <div className="h-[280px] md:h-[340px] relative bg-zinc-100">
                 <Image
-                  src={event.cover_url || `/covers/${event.sport_type}.jpg`}
+                  src={event.cover_url || getCoverSrcForSport(event.sport_type)}
                   alt={event.title}
                   fill
                   sizes="(max-width: 768px) 100vw, 60vw"

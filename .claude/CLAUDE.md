@@ -5,13 +5,13 @@
 
 ## Stack
 - Next.js 16 (App Router), React 19, TypeScript (strict), Tailwind CSS v4.
-- Supabase client + Prisma (build runs `prisma generate`).
+- Supabase client for auth/data.
 
 ## Repo Layout
 - `src/app/` routes, layouts, and API handlers (`app/api/**/route.ts`).
 - `src/components/` reusable UI components.
 - `src/lib/` shared utilities and API clients.
-- `public/`, `prisma/`, `supabase/` for assets and backend tooling.
+- `public/` and `supabase/` for assets and project tooling.
 - Path alias: `@/*` → `src/*`.
 
 ## Coding Conventions
@@ -27,11 +27,10 @@
 
 ## Supabase & Env
 - Browser client: `src/lib/supabase.ts` uses `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-- Admin client: `src/lib/supabase-admin.ts` uses `SUPABASE_SERVICE_KEY` and must remain server-only.
 - Never expose service keys or secrets in client components.
 
 ## Commands
 - `npm run dev` — dev server
-- `npm run build` — production build (includes `prisma generate`)
+- `npm run build` — production build
 - `npm run start` — run production server
 - `npm run lint` — ESLint (Next core-web-vitals + TypeScript)

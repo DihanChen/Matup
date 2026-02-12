@@ -3,6 +3,7 @@
 export const sportEmojis: Record<string, string> = {
   running: "🏃",
   tennis: "🎾",
+  pickleball: "🏓",
   cycling: "🚴",
   gym: "💪",
   yoga: "🧘",

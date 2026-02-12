@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import type { User } from "@supabase/supabase-js";
 
 type Friendship = {
   id: string;
@@ -26,7 +25,6 @@ type FriendEntry = {
 
 export default function FriendsPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState<FriendEntry[]>([]);
   const [receivedRequests, setReceivedRequests] = useState<FriendEntry[]>([]);
@@ -45,8 +43,6 @@ export default function FriendsPage() {
         router.push("/login");
         return;
       }
-
-      setUser(user);
 
       // Get all friendships involving this user
       const { data: friendshipsData } = await supabase
@@ -203,9 +199,24 @@ export default function FriendsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-zinc-500">Loading...</div>
-        </div>
+        <main className="max-w-[980px] mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6 animate-pulse">
+          <div className="space-y-3">
+            <div className="h-9 w-56 bg-zinc-200 rounded-xl" />
+            <div className="h-4 w-72 bg-zinc-100 rounded" />
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((item) => (
+              <div key={`friends-skeleton-row-${item}`} className="rounded-2xl border border-zinc-200 p-4 flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-zinc-100" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-40 bg-zinc-200 rounded" />
+                  <div className="h-3 w-24 bg-zinc-100 rounded" />
+                </div>
+                <div className="h-8 w-20 rounded-full bg-zinc-100" />
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }

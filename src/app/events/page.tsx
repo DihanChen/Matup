@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, Suspense, useRef } from "react";
+import { useEffect, useMemo, useState, Suspense, useRef } from "react";
 import { createClient } from "@/lib/supabase";
 import EventCard from "@/components/EventCard";
 import { useSearchParams } from "next/navigation";
@@ -46,6 +46,7 @@ const SPORT_FILTERS = [
   { value: "", label: "All" },
   { value: "soccer", label: "Soccer" },
   { value: "tennis", label: "Tennis" },
+  { value: "pickleball", label: "Pickleball" },
   { value: "basketball", label: "Basketball" },
   { value: "running", label: "Running" },
   { value: "cycling", label: "Cycling" },
@@ -57,9 +58,27 @@ const SPORT_FILTERS = [
 export default function EventsPage() {
   return (
     <Suspense fallback={
-      <div className="h-[calc(100vh-56px)] bg-zinc-50 overflow-hidden">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-zinc-500">Loading...</div>
+      <div className="h-[calc(100vh-56px)] bg-zinc-50 overflow-hidden animate-pulse">
+        <div className="flex h-full min-h-0 flex-col lg:flex-row">
+          <div className="w-full lg:w-96 bg-white border-b lg:border-b-0 lg:border-r border-zinc-200 p-5 sm:p-6 space-y-4">
+            <div className="h-8 w-32 bg-zinc-200 rounded-xl" />
+            <div className="h-4 w-56 bg-zinc-100 rounded" />
+            <div className="h-10 w-full bg-zinc-100 rounded-full" />
+            <div className="h-10 w-full bg-zinc-100 rounded-full" />
+            <div className="space-y-3 pt-2">
+              {[1, 2, 3].map((item) => (
+                <div key={`events-list-skeleton-${item}`} className="rounded-xl border border-zinc-200 overflow-hidden">
+                  <div className="h-32 bg-zinc-100" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-3 w-24 bg-zinc-200 rounded" />
+                    <div className="h-4 w-3/4 bg-zinc-200 rounded" />
+                    <div className="h-3 w-1/2 bg-zinc-100 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex-1 bg-zinc-100" />
         </div>
       </div>
     }>
@@ -74,7 +93,6 @@ function EventsContent() {
   const searchFromUrl = searchParams.get("search") || "";
 
   const [events, setEvents] = useState<Event[]>([]);
-  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [sportFilter, setSportFilter] = useState(sportFromUrl);
   const [searchQuery, setSearchQuery] = useState(searchFromUrl);
@@ -187,11 +205,11 @@ function EventsContent() {
     hasAttemptedAutoLocation.current = true;
 
     if (!navigator.geolocation) {
-      setLocationStatus("error");
+      window.setTimeout(() => setLocationStatus("error"), 0);
       return;
     }
 
-    setLocationStatus("loading");
+    window.setTimeout(() => setLocationStatus("loading"), 0);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
@@ -203,7 +221,7 @@ function EventsContent() {
     );
   }, []);
 
-  useEffect(() => {
+  const filteredEvents = useMemo(() => {
     let result = events.map((event) => {
       if (userLocation && event.latitude && event.longitude) {
         return {
@@ -234,7 +252,7 @@ function EventsContent() {
       });
     }
 
-    setFilteredEvents(result);
+    return result;
   }, [events, searchQuery, userLocation, sortByDistance]);
 
   // Map center — user location or default

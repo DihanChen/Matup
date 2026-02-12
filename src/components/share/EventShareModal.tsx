@@ -35,12 +35,19 @@ export default function EventShareModal({
   eventUrl,
 }: EventShareModalProps) {
   const templateRef = useRef<HTMLDivElement>(null);
-  const [templateType, setTemplateType] = useState<ShareTemplateType>(
-    isPastEvent ? "completed" : "upcoming"
-  );
+  const defaultTemplateType: ShareTemplateType = isPastEvent ? "completed" : "upcoming";
+  const [manualTemplateType, setManualTemplateType] = useState<ShareTemplateType | null>(null);
+  const templateType = manualTemplateType ?? defaultTemplateType;
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const handleCloseModal = () => {
+    setManualTemplateType(null);
+    setPreviewUrl(null);
+    setIsLoadingPreview(false);
+    onClose();
+  };
 
   const handleCopyLink = async () => {
     const date = new Date(datetime);
@@ -68,35 +75,35 @@ Sign up here: ${eventUrl}`;
 
   // Generate preview when modal opens or template type changes
   useEffect(() => {
-    if (!isOpen) {
-      setPreviewUrl(null);
-      return;
-    }
+    if (!isOpen) return;
+    let cancelled = false;
 
     async function generatePreview() {
       setIsLoadingPreview(true);
       // Small delay to ensure template is rendered
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      if (templateRef.current) {
+      if (templateRef.current && !cancelled) {
         const dataUrl = await captureElementAsDataURL(templateRef.current);
-        setPreviewUrl(dataUrl);
+        if (!cancelled) {
+          setPreviewUrl(dataUrl);
+        }
       }
-      setIsLoadingPreview(false);
+      if (!cancelled) {
+        setIsLoadingPreview(false);
+      }
     }
 
     generatePreview();
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, templateType]);
-
-  // Update template type when isPastEvent changes
-  useEffect(() => {
-    setTemplateType(isPastEvent ? "completed" : "upcoming");
-  }, [isPastEvent]);
 
   const handleShare = async () => {
     const success = await onShare(templateRef.current, eventTitle);
     if (success) {
-      onClose();
+      handleCloseModal();
     }
   };
 
@@ -123,7 +130,7 @@ Sign up here: ${eventUrl}`;
               Share to Social Media
             </h3>
             <button
-              onClick={onClose}
+              onClick={handleCloseModal}
               className="p-2 text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors"
             >
               <svg
@@ -146,7 +153,7 @@ Sign up here: ${eventUrl}`;
           {/* Template type toggle */}
           <div className="flex gap-2 mb-3">
             <button
-              onClick={() => setTemplateType("upcoming")}
+              onClick={() => setManualTemplateType("upcoming")}
               className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
                 templateType === "upcoming"
                   ? "bg-orange-500 text-white"
@@ -156,7 +163,7 @@ Sign up here: ${eventUrl}`;
               Invite Friends
             </button>
             <button
-              onClick={() => setTemplateType("completed")}
+              onClick={() => setManualTemplateType("completed")}
               className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
                 templateType === "completed"
                   ? "bg-purple-600 text-white"

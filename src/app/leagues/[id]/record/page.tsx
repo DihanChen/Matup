@@ -5,41 +5,58 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { getApiBaseUrl } from "@/lib/api";
 import type { User } from "@supabase/supabase-js";
-import type { ScoringFormat } from "@/lib/rankings";
+import type {
+  ApiFixture as WorkflowFixture,
+  League as LeagueDetails,
+  LeagueMatch,
+  LeagueMember,
+} from "@/lib/league-types";
+import { getInitials } from "@/lib/league-utils";
 
-type League = {
-  id: string;
-  name: string;
-  scoring_format: ScoringFormat;
-  league_type: string;
-  season_weeks: number | null;
-  rotation_type: string | null;
-};
+type League = Pick<
+  LeagueDetails,
+  "id" | "name" | "scoring_format" | "league_type" | "season_weeks" | "rotation_type"
+>;
 
-type MemberInfo = {
-  user_id: string;
-  role: string;
-  name: string | null;
-  avatar_url: string | null;
-};
+type MemberInfo = Pick<LeagueMember, "user_id" | "role" | "name" | "avatar_url">;
 
-type ScheduledMatch = {
-  id: string;
-  week_number: number | null;
-  match_date: string | null;
-  status: string;
-  participants: {
+type ScheduledMatch = Pick<
+  LeagueMatch,
+  "id" | "week_number" | "match_date" | "status" | "source"
+> & {
+  participants: Array<{
     user_id: string;
     team: string | null;
     name: string | null;
-  }[];
+  }>;
 };
+
+type ApiFixture = Pick<
+  WorkflowFixture,
+  "id" | "week_number" | "starts_at" | "status" | "participants"
+>;
 
 type SetScore = {
   a: string;
   b: string;
 };
+
+function mapFixtureToScheduledMatch(fixture: ApiFixture): ScheduledMatch {
+  return {
+    id: fixture.id,
+    week_number: fixture.week_number,
+    match_date: fixture.starts_at ? fixture.starts_at.split("T")[0] : null,
+    status: fixture.status,
+    source: "workflow",
+    participants: (fixture.participants || []).map((participant) => ({
+      user_id: participant.user_id,
+      team: participant.side,
+      name: participant.name,
+    })),
+  };
+}
 
 export default function RecordResultsPage() {
   const params = useParams();
@@ -85,7 +102,7 @@ export default function RecordResultsPage() {
   const [selectedPointsMembers, setSelectedPointsMembers] = useState<Set<string>>(new Set());
 
   const isTennis = league?.scoring_format === "singles" || league?.scoring_format === "doubles";
-  const isDoubles = league?.scoring_format === "doubles";
+  const isPickleball = league?.sport_type === "pickleball";
 
   useEffect(() => {
     async function fetchData() {
@@ -153,6 +170,8 @@ export default function RecordResultsPage() {
       // Get scheduled matches for tennis formats
       const isTennisFormat = leagueData.scoring_format === "singles" || leagueData.scoring_format === "doubles";
       if (isTennisFormat) {
+        let allScheduledMatches: ScheduledMatch[] = [];
+
         const { data: matchesData } = await supabase
           .from("league_matches")
           .select("id, week_number, match_date, status")
@@ -174,8 +193,9 @@ export default function RecordResultsPage() {
             pProfiles = data || [];
           }
 
-          const matchesWithParticipants = matchesData.map((match) => ({
+          const matchesWithParticipants: ScheduledMatch[] = matchesData.map((match) => ({
             ...match,
+            source: "legacy",
             participants: (participantsData || [])
               .filter((p) => p.match_id === match.id)
               .map((p) => ({
@@ -184,8 +204,41 @@ export default function RecordResultsPage() {
               })),
           }));
 
-          setScheduledMatches(matchesWithParticipants);
+          allScheduledMatches = matchesWithParticipants;
         }
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.access_token) {
+          const response = await fetch(
+            `${getApiBaseUrl()}/api/leagues/${leagueId}/fixtures`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            const data = (await response.json()) as { fixtures?: ApiFixture[] };
+            const workflowMatches = (data.fixtures || [])
+              .filter((fixture) => fixture.status !== "finalized" && fixture.status !== "cancelled")
+              .map(mapFixtureToScheduledMatch);
+
+            workflowMatches.forEach((workflowMatch) => {
+              if (!allScheduledMatches.find((match) => match.id === workflowMatch.id)) {
+                allScheduledMatches.push(workflowMatch);
+              }
+            });
+          }
+        }
+
+        allScheduledMatches.sort(
+          (a, b) => (a.week_number ?? 10_000) - (b.week_number ?? 10_000)
+        );
+        setScheduledMatches(allScheduledMatches);
       }
 
       setLoading(false);
@@ -193,16 +246,6 @@ export default function RecordResultsPage() {
 
     fetchData();
   }, [leagueId, router]);
-
-  const getInitials = (name: string | null) => {
-    if (!name) return "?";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   const getMemberName = (userId: string) =>
     members.find((m) => m.user_id === userId)?.name || "Anonymous";
@@ -360,34 +403,79 @@ export default function RecordResultsPage() {
 
     if (isTennis) {
       const finalWinner = scoreMode === "detailed" ? getWinnerFromSets() : winner;
-      if (!finalWinner) return;
+      if (!finalWinner) {
+        setSubmitting(false);
+        return;
+      }
 
-      const setScoresData =
+      const parsedSetScores =
         scoreMode === "detailed"
-          ? { sets: sets.filter((s) => s.a !== "" && s.b !== "").map((s) => [parseInt(s.a), parseInt(s.b)]) }
+          ? sets
+              .filter((s) => s.a !== "" && s.b !== "")
+              .map((s) => [parseInt(s.a, 10), parseInt(s.b, 10)])
           : null;
+      const setScoresData = parsedSetScores ? { sets: parsedSetScores } : null;
 
       if (selectedMatchId && !isAdHoc) {
-        // Update existing scheduled match
-        const { error: matchError } = await supabase
-          .from("league_matches")
-          .update({ status: "completed", winner: finalWinner })
-          .eq("id", selectedMatchId);
+        const selected = scheduledMatches.find((match) => match.id === selectedMatchId);
 
-        if (matchError) {
-          setError(matchError.message);
-          setSubmitting(false);
-          return;
-        }
+        if (selected?.source === "workflow") {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
 
-        // Update participant set_scores
-        if (setScoresData) {
-          for (const userId of [...matchTeamA, ...matchTeamB]) {
-            await supabase
-              .from("match_participants")
-              .update({ set_scores: setScoresData })
-              .eq("match_id", selectedMatchId)
-              .eq("user_id", userId);
+          if (!session?.access_token) {
+            setError("You must be logged in to submit workflow results.");
+            setSubmitting(false);
+            return;
+          }
+
+          const response = await fetch(
+            `${getApiBaseUrl()}/api/fixtures/${selectedMatchId}/results/submit`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                payload: {
+                  winner: finalWinner,
+                  sets: parsedSetScores || undefined,
+                  notes: notes || undefined,
+                },
+              }),
+            }
+          );
+
+          const data = await response.json().catch(() => null);
+          if (!response.ok) {
+            setError(data?.error || "Failed to submit fixture result");
+            setSubmitting(false);
+            return;
+          }
+        } else {
+          // Update existing scheduled match (legacy path)
+          const { error: matchError } = await supabase
+            .from("league_matches")
+            .update({ status: "completed", winner: finalWinner })
+            .eq("id", selectedMatchId);
+
+          if (matchError) {
+            setError(matchError.message);
+            setSubmitting(false);
+            return;
+          }
+
+          // Update participant set_scores
+          if (setScoresData) {
+            for (const userId of [...matchTeamA, ...matchTeamB]) {
+              await supabase
+                .from("match_participants")
+                .update({ set_scores: setScoresData })
+                .eq("match_id", selectedMatchId)
+                .eq("user_id", userId);
+            }
           }
         }
       } else {
@@ -521,9 +609,21 @@ export default function RecordResultsPage() {
   if (loading || !authorized) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-zinc-500">Loading...</div>
-        </div>
+        <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-pulse">
+          <div className="flex items-center justify-between mb-6">
+            <div className="h-9 w-52 bg-zinc-200 rounded-xl" />
+            <div className="h-8 w-8 rounded-full bg-zinc-100" />
+          </div>
+          <div className="rounded-2xl border border-zinc-200 p-5 sm:p-8 space-y-5">
+            <div className="h-4 w-56 bg-zinc-100 rounded mx-auto" />
+            <div className="h-4 w-28 bg-zinc-200 rounded" />
+            <div className="h-12 w-full bg-zinc-100 rounded-xl" />
+            <div className="h-4 w-28 bg-zinc-200 rounded" />
+            <div className="h-12 w-full bg-zinc-100 rounded-xl" />
+            <div className="h-36 w-full bg-zinc-50 rounded-xl border border-zinc-200" />
+            <div className="h-12 w-full bg-zinc-200 rounded-full" />
+          </div>
+        </main>
       </div>
     );
   }
@@ -555,6 +655,12 @@ export default function RecordResultsPage() {
           {error && (
             <div className="p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm">
               {error}
+            </div>
+          )}
+
+          {isTennis && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700 mb-4">
+              You can also submit results directly from match cards on the league page.
             </div>
           )}
 
@@ -762,7 +868,7 @@ export default function RecordResultsPage() {
                             : "text-zinc-500"
                         }`}
                       >
-                        Set Scores
+                        {isPickleball ? "Game Scores" : "Set Scores"}
                       </button>
                     </div>
                   </div>
@@ -813,8 +919,8 @@ export default function RecordResultsPage() {
                             value={set.a}
                             onChange={(e) => updateSet(i, "a", e.target.value)}
                             min="0"
-                            max="7"
-                            placeholder="0"
+                            max={isPickleball ? "30" : "7"}
+                            placeholder={isPickleball ? "11" : "0"}
                             className="w-full px-3 py-2 border border-blue-200 rounded-xl bg-blue-50 text-zinc-900 text-center font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                           <span className="text-zinc-400 font-bold text-sm">-</span>
@@ -823,8 +929,8 @@ export default function RecordResultsPage() {
                             value={set.b}
                             onChange={(e) => updateSet(i, "b", e.target.value)}
                             min="0"
-                            max="7"
-                            placeholder="0"
+                            max={isPickleball ? "30" : "7"}
+                            placeholder={isPickleball ? "11" : "0"}
                             className="w-full px-3 py-2 border border-red-200 rounded-xl bg-red-50 text-zinc-900 text-center font-bold focus:ring-2 focus:ring-red-500 focus:border-transparent"
                           />
                           {sets.length > 1 && (
@@ -847,7 +953,7 @@ export default function RecordResultsPage() {
                           onClick={addSet}
                           className="w-full py-2 border border-dashed border-zinc-300 rounded-xl text-sm text-zinc-500 hover:border-orange-300 hover:text-orange-500 transition-all"
                         >
-                          + Add Set
+                          {isPickleball ? "+ Add Game" : "+ Add Set"}
                         </button>
                       )}
                       {getWinnerFromSets() && (

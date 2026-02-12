@@ -6,14 +6,16 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
+import { buildLeagueRules } from "@/lib/league-rules";
 import StepIndicator from "@/components/create-event/StepIndicator";
 import { ActivityIcon } from "@/components/create-event/ActivityCard";
 
 interface FormData {
-  sportType: "tennis" | "running" | "";
+  sportType: "tennis" | "pickleball" | "running" | "";
   matchType: "singles" | "doubles" | "";
   rotationType: "random" | "assigned" | "";
   scoringFormat: "singles" | "doubles" | "individual_time" | "";
+  runningComparisonMode: "personal_progress" | "absolute_performance";
   startDate: string;
   seasonWeeks: number;
   name: string;
@@ -44,6 +46,7 @@ export default function CreateLeaguePage() {
     matchType: "",
     rotationType: "",
     scoringFormat: "",
+    runningComparisonMode: "personal_progress",
     startDate: "",
     seasonWeeks: 10,
     name: "",
@@ -110,7 +113,7 @@ export default function CreateLeaguePage() {
     switch (step) {
       case 1:
         if (!formData.sportType) return false;
-        if (formData.sportType === "tennis") {
+        if (formData.sportType === "tennis" || formData.sportType === "pickleball") {
           if (!formData.matchType) return false;
           if (formData.matchType === "doubles" && !formData.rotationType) return false;
         }
@@ -148,10 +151,39 @@ export default function CreateLeaguePage() {
 
     const supabase = createClient();
 
+    if (!formData.sportType) {
+      setError("Please select a sport.");
+      setLoading(false);
+      return;
+    }
+
+    if (
+      (formData.sportType === "tennis" || formData.sportType === "pickleball") &&
+      !formData.matchType
+    ) {
+      setError(
+        `Please select a ${
+          formData.sportType === "pickleball" ? "pickleball" : "tennis"
+        } format.`
+      );
+      setLoading(false);
+      return;
+    }
+
     // Determine scoring format based on sport
-    const scoringFormat = formData.sportType === "running"
-      ? "individual_time"
-      : formData.matchType; // "singles" or "doubles" for tennis
+    const scoringFormat: "individual_time" | "singles" | "doubles" =
+      formData.sportType === "running" ? "individual_time" : formData.matchType;
+    const shouldSetRotationType =
+      (formData.sportType === "tennis" || formData.sportType === "pickleball") &&
+      formData.matchType === "doubles";
+    const rulesJson = buildLeagueRules({
+      sportType: formData.sportType,
+      matchType: formData.matchType,
+      rotationType: formData.rotationType,
+      runningComparisonMode: formData.runningComparisonMode,
+      startDate: formData.startDate,
+      seasonWeeks: formData.seasonWeeks,
+    });
 
     const { data: leagueData, error: leagueError } = await supabase
       .from("leagues")
@@ -165,9 +197,9 @@ export default function CreateLeaguePage() {
         max_members: formData.maxMembers,
         start_date: formData.startDate || null,
         season_weeks: formData.seasonWeeks,
-        rotation_type: formData.sportType === "tennis" && formData.matchType === "doubles"
-          ? formData.rotationType
-          : null,
+        rotation_type: shouldSetRotationType ? formData.rotationType : null,
+        rules_version: 1,
+        rules_jsonb: rulesJson,
       })
       .select("id")
       .single();
@@ -224,9 +256,24 @@ export default function CreateLeaguePage() {
   if (isPremium === null) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-zinc-500">Loading...</div>
-        </div>
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 animate-pulse">
+          <div className="h-8 w-64 bg-zinc-200 rounded-xl mx-auto" />
+          <div className="flex items-center justify-center gap-3">
+            {[1, 2, 3].map((step) => (
+              <div key={`league-create-step-skeleton-${step}`} className="h-8 w-24 rounded-full bg-zinc-100" />
+            ))}
+          </div>
+          <div className="rounded-2xl border border-zinc-200 p-6 sm:p-8 space-y-5">
+            <div className="h-6 w-48 bg-zinc-200 rounded" />
+            <div className="grid grid-cols-2 gap-4 max-w-md">
+              {[1, 2, 3, 4].map((item) => (
+                <div key={`league-create-sport-skeleton-${item}`} className="h-28 rounded-2xl bg-zinc-100" />
+              ))}
+            </div>
+            <div className="h-12 w-full bg-zinc-100 rounded-full" />
+            <div className="h-12 w-40 bg-zinc-200 rounded-full ml-auto" />
+          </div>
+        </main>
       </div>
     );
   }
@@ -278,7 +325,7 @@ export default function CreateLeaguePage() {
             </h1>
 
             {/* Sport Selector */}
-            <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
               <button
                 type="button"
                 onClick={() => updateFormData({ sportType: "running", matchType: "", rotationType: "" })}
@@ -300,7 +347,26 @@ export default function CreateLeaguePage() {
               </button>
               <button
                 type="button"
-                onClick={() => updateFormData({ sportType: "tennis" })}
+                onClick={() => updateFormData({ sportType: "pickleball", matchType: "", rotationType: "" })}
+                className={`
+                  relative p-5 sm:p-7 rounded-2xl cursor-pointer transition-all duration-200
+                  bg-zinc-100 flex flex-col items-center text-center
+                  hover:scale-105 hover:shadow-lg
+                  ${formData.sportType === "pickleball"
+                    ? "ring-2 ring-yellow-400 ring-offset-2 scale-105 shadow-lg"
+                    : "hover:ring-2 hover:ring-zinc-300"
+                  }
+                `}
+              >
+                <div className="text-zinc-900 mb-3">
+                  <ActivityIcon id="pickleball" className="w-8 h-8 sm:w-10 sm:h-10" />
+                </div>
+                <div className="text-zinc-900 font-semibold">Pickleball</div>
+                <div className="text-xs text-zinc-500 mt-1">Singles & doubles seasons</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateFormData({ sportType: "tennis", matchType: "", rotationType: "" })}
                 className={`
                   relative p-5 sm:p-7 rounded-2xl cursor-pointer transition-all duration-200
                   bg-zinc-100 flex flex-col items-center text-center
@@ -321,23 +387,76 @@ export default function CreateLeaguePage() {
 
             {/* Running: Info card */}
             {formData.sportType === "running" && (
-              <div className="max-w-md mx-auto p-4 bg-green-50 border border-green-200 rounded-2xl">
-                <div className="flex items-center gap-2 mb-1">
-                  <ActivityIcon id="running" className="w-4 h-4 text-green-600" />
-                  <span className="font-semibold text-green-800 text-sm">Running League</span>
+              <div className="max-w-md mx-auto space-y-3">
+                <div className="p-4 bg-green-50 border border-green-200 rounded-2xl">
+                  <div className="flex items-center gap-2 mb-1">
+                    <ActivityIcon id="running" className="w-4 h-4 text-green-600" />
+                    <span className="font-semibold text-green-800 text-sm">Running League</span>
+                  </div>
+                  <p className="text-xs text-green-700">
+                    Set how leaderboard ranks runners each week.
+                  </p>
                 </div>
-                <p className="text-xs text-green-700">
-                  Members record individual times each week. Standings based on position points — 1st gets most points, etc.
-                </p>
+                <div className="p-4 bg-white border border-zinc-200 rounded-2xl">
+                  <div className="text-sm font-bold text-zinc-900 mb-3">Leaderboard Mode</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateFormData({ runningComparisonMode: "personal_progress" })
+                      }
+                      className={`text-left p-3 rounded-xl border transition-colors ${
+                        formData.runningComparisonMode === "personal_progress"
+                          ? "border-orange-500 bg-orange-50"
+                          : "border-zinc-200 bg-zinc-50 hover:bg-zinc-100"
+                      }`}
+                    >
+                      <div className="text-sm font-semibold text-zinc-900">Personal Progress</div>
+                      <div className="text-xs text-zinc-500 mt-1">
+                        Rank by pace improvement vs previous session.
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateFormData({ runningComparisonMode: "absolute_performance" })
+                      }
+                      className={`text-left p-3 rounded-xl border transition-colors ${
+                        formData.runningComparisonMode === "absolute_performance"
+                          ? "border-orange-500 bg-orange-50"
+                          : "border-zinc-200 bg-zinc-50 hover:bg-zinc-100"
+                      }`}
+                    >
+                      <div className="text-sm font-semibold text-zinc-900">Absolute Performance</div>
+                      <div className="text-xs text-zinc-500 mt-1">
+                        Rank by total time (fastest overall leads).
+                      </div>
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Tennis: Match Type */}
-            {formData.sportType === "tennis" && (
+            {/* Racket Sports: Match Type */}
+            {(formData.sportType === "tennis" || formData.sportType === "pickleball") && (
               <>
+                {formData.sportType === "pickleball" && (
+                  <div className="max-w-md mx-auto mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ActivityIcon id="pickleball" className="w-4 h-4 text-emerald-700" />
+                      <span className="text-sm font-bold text-emerald-900">Pickleball Rules (Default)</span>
+                    </div>
+                    <ul className="text-xs text-emerald-800 space-y-1.5">
+                      <li>Best of 3 games by default</li>
+                      <li>Games to 11 points, win by 2</li>
+                      <li>Side-out serving model</li>
+                      <li>Standings prioritize match points, then head-to-head and point diff</li>
+                    </ul>
+                  </div>
+                )}
                 <div className="max-w-md mx-auto mb-6">
                   <div className="flex items-center gap-2 mb-4 justify-center">
-                    <ActivityIcon id="tennis" className="w-4 h-4 text-zinc-500" />
+                    <ActivityIcon id={formData.sportType} className="w-4 h-4 text-zinc-500" />
                     <span className="text-sm font-bold text-zinc-900">Match Type</span>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -522,6 +641,8 @@ export default function CreateLeaguePage() {
                   placeholder={
                     formData.sportType === "running"
                       ? "e.g. Sunday Morning Run Club"
+                      : formData.sportType === "pickleball"
+                        ? "e.g. Wednesday Pickleball Ladder"
                       : formData.matchType === "doubles"
                         ? "e.g. Saturday Doubles League"
                         : "e.g. Weekend Tennis Singles"
@@ -546,6 +667,8 @@ export default function CreateLeaguePage() {
                   placeholder={
                     formData.sportType === "running"
                       ? "Weekly group runs for all levels with timed results"
+                      : formData.sportType === "pickleball"
+                      ? "Competitive pickleball league with weekly matchups and standings"
                       : "Friendly tennis league for all levels"
                   }
                   className="w-full px-4 py-3 border border-zinc-200 rounded-2xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all resize-none"

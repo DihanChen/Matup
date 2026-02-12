@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import NavbarShell from "@/components/NavbarShell";
 
 const inter = Inter({
@@ -12,7 +11,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "MatUp - Find Your Fitness Partner",
-  description: "Connect with fitness partners in your area. Join running clubs, find tennis partners, and more.",
+  description:
+    "Connect with fitness partners in your area. Join running clubs, find tennis and pickleball partners, and more.",
 };
 
 export default function RootLayout({
@@ -25,7 +25,6 @@ export default function RootLayout({
       <body
         className={`${inter.variable} antialiased`}
       >
-        <ServiceWorkerRegistration />
         <NavbarShell />
         {children}
       </body>

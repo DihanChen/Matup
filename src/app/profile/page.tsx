@@ -10,6 +10,7 @@ import Image from "next/image";
 const ACTIVITIES = [
   { id: "running", label: "Running", icon: "running" },
   { id: "tennis", label: "Tennis", icon: "tennis" },
+  { id: "pickleball", label: "Pickleball", icon: "pickleball" },
   { id: "cycling", label: "Cycling", icon: "cycling" },
   { id: "gym", label: "Gym", icon: "gym" },
   { id: "yoga", label: "Yoga", icon: "yoga" },
@@ -188,9 +189,29 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-zinc-500">Loading...</div>
-        </div>
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8 animate-pulse">
+          <div className="grid md:grid-cols-[1fr_auto] gap-8">
+            <div className="space-y-3">
+              <div className="h-12 w-72 bg-zinc-200 rounded-xl" />
+              <div className="h-4 w-48 bg-zinc-100 rounded" />
+              <div className="h-3 w-36 bg-zinc-100 rounded" />
+            </div>
+            <div className="w-36 h-36 sm:w-40 sm:h-40 rounded-full bg-zinc-100" />
+          </div>
+          <div className="rounded-2xl border border-zinc-200 p-6 space-y-4">
+            <div className="h-6 w-28 bg-zinc-200 rounded" />
+            <div className="h-12 w-full bg-zinc-100 rounded-xl" />
+            <div className="h-24 w-full bg-zinc-100 rounded-xl" />
+          </div>
+          <div className="rounded-2xl border border-zinc-200 p-6 space-y-4">
+            <div className="h-6 w-32 bg-zinc-200 rounded" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[1, 2, 3, 4].map((item) => (
+                <div key={`profile-skeleton-activity-${item}`} className="h-14 bg-zinc-100 rounded-xl" />
+              ))}
+            </div>
+          </div>
+        </main>
       </div>
     );
   }

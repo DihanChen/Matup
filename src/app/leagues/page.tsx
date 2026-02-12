@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import type { User } from "@supabase/supabase-js";
+import StatusBadge from "@/components/leagues/StatusBadge";
+import { ActivityIcon } from "@/components/create-event/ActivityCard";
 
 type League = {
   id: string;
@@ -17,7 +19,12 @@ type League = {
   created_at: string;
   creator_id: string;
   member_count: number;
+  season_weeks?: number | null;
+  start_date?: string | null;
 };
+
+type MembershipView = "all" | "owned" | "joined";
+type LeagueWithRole = League & { membershipRole: "owner" | "member" };
 
 const FORMAT_LABELS: Record<string, string> = {
   team_vs_team: "Team vs Team",
@@ -27,13 +34,62 @@ const FORMAT_LABELS: Record<string, string> = {
   doubles: "Doubles",
 };
 
+function getSportKey(league: League): "tennis" | "pickleball" | "running" | "other" {
+  if (league.sport_type === "pickleball") {
+    return "pickleball";
+  }
+  if (league.sport_type === "tennis") {
+    return "tennis";
+  }
+  if (league.sport_type === "running" || league.scoring_format === "individual_time") {
+    return "running";
+  }
+  if (league.scoring_format === "singles" || league.scoring_format === "doubles") {
+    return "tennis";
+  }
+  return "other";
+}
+
+function getSportLabel(league: League): string {
+  const sport = getSportKey(league);
+  if (sport === "tennis") return "Tennis";
+  if (sport === "pickleball") return "Pickleball";
+  if (sport === "running") return "Running";
+  return league.sport_type;
+}
+
+function getSeasonProgress(league: League): { label: string; percent: number } | null {
+  const totalWeeks = league.season_weeks ?? null;
+  if (!totalWeeks || totalWeeks < 1) return null;
+  if (!league.start_date) return { label: `Week 1 of ${totalWeeks}`, percent: 0 };
+
+  const start = new Date(league.start_date);
+  const now = new Date();
+  if (Number.isNaN(start.getTime())) return { label: `Week 1 of ${totalWeeks}`, percent: 0 };
+
+  if (start > now) {
+    return { label: `Starts ${start.toLocaleDateString()}`, percent: 0 };
+  }
+
+  const msInWeek = 1000 * 60 * 60 * 24 * 7;
+  const elapsedWeeks = Math.floor((now.getTime() - start.getTime()) / msInWeek) + 1;
+  const currentWeek = Math.min(Math.max(elapsedWeeks, 1), totalWeeks);
+  const percent = Math.round((currentWeek / totalWeeks) * 100);
+
+  return {
+    label: `Week ${currentWeek} of ${totalWeeks}`,
+    percent: Math.min(Math.max(percent, 0), 100),
+  };
+}
+
 export default function LeaguesPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [ownedLeagues, setOwnedLeagues] = useState<League[]>([]);
   const [joinedLeagues, setJoinedLeagues] = useState<League[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [view, setView] = useState<MembershipView>("all");
 
   useEffect(() => {
     const supabase = createClient();
@@ -48,9 +104,6 @@ export default function LeaguesPage() {
         return;
       }
 
-      setUser(user);
-
-      // Check premium
       const { data: profile } = await supabase
         .from("profiles")
         .select("is_premium")
@@ -59,14 +112,13 @@ export default function LeaguesPage() {
 
       setIsPremium(profile?.is_premium ?? false);
 
-      // Get all league memberships
       const { data: memberships } = await supabase
         .from("league_members")
         .select("league_id, role")
         .eq("user_id", user.id);
 
       if (memberships && memberships.length > 0) {
-        const leagueIds = memberships.map((m) => m.league_id);
+        const leagueIds = memberships.map((membership) => membership.league_id);
 
         const { data: leagues } = await supabase
           .from("leagues")
@@ -75,31 +127,23 @@ export default function LeaguesPage() {
           .order("created_at", { ascending: false });
 
         if (leagues) {
-          // Get member counts
           const { data: allMembers } = await supabase
             .from("league_members")
             .select("league_id")
             .in("league_id", leagueIds);
 
           const countMap: Record<string, number> = {};
-          allMembers?.forEach((m) => {
-            countMap[m.league_id] = (countMap[m.league_id] || 0) + 1;
+          allMembers?.forEach((member) => {
+            countMap[member.league_id] = (countMap[member.league_id] || 0) + 1;
           });
 
-          const leaguesWithCount = leagues.map((l) => ({
-            ...l,
-            member_count: countMap[l.id] || 0,
+          const leaguesWithCount = leagues.map((league) => ({
+            ...league,
+            member_count: countMap[league.id] || 0,
           }));
 
-          const owned = leaguesWithCount.filter(
-            (l) => l.creator_id === user.id
-          );
-          const joined = leaguesWithCount.filter(
-            (l) => l.creator_id !== user.id
-          );
-
-          setOwnedLeagues(owned);
-          setJoinedLeagues(joined);
+          setOwnedLeagues(leaguesWithCount.filter((league) => league.creator_id === user.id));
+          setJoinedLeagues(leaguesWithCount.filter((league) => league.creator_id !== user.id));
         }
       }
 
@@ -109,179 +153,274 @@ export default function LeaguesPage() {
     fetchData();
   }, [router]);
 
+  const allLeagues = useMemo<LeagueWithRole[]>(
+    () =>
+      [
+        ...ownedLeagues.map((league) => ({ ...league, membershipRole: "owner" as const })),
+        ...joinedLeagues.map((league) => ({ ...league, membershipRole: "member" as const })),
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    [ownedLeagues, joinedLeagues]
+  );
+
+  const visibleLeagues = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const byView =
+      view === "owned"
+        ? allLeagues.filter((league) => league.membershipRole === "owner")
+        : view === "joined"
+          ? allLeagues.filter((league) => league.membershipRole === "member")
+          : allLeagues;
+
+    if (!query) return byView;
+
+    return byView.filter((league) => {
+      const sportLabel = getSportLabel(league).toLowerCase();
+      return (
+        league.name.toLowerCase().includes(query) ||
+        sportLabel.includes(query) ||
+        league.scoring_format.toLowerCase().includes(query) ||
+        league.league_type.toLowerCase().includes(query)
+      );
+    });
+  }, [allLeagues, searchQuery, view]);
+
+  const viewCounts = {
+    all: allLeagues.length,
+    owned: ownedLeagues.length,
+    joined: joinedLeagues.length,
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-zinc-500">Loading...</div>
-        </div>
+        <main className="max-w-[980px] mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6 animate-pulse">
+          <div className="h-10 w-64 bg-zinc-200 rounded-xl" />
+          <div className="h-12 w-full bg-zinc-100 rounded-full" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {[1, 2, 3, 4, 5, 6].map((card) => (
+              <div key={`league-skeleton-card-${card}`} className="rounded-2xl border border-zinc-200 p-5">
+                <div className="h-4 w-24 bg-zinc-200 rounded mb-3" />
+                <div className="h-5 w-3/4 bg-zinc-200 rounded mb-3" />
+                <div className="h-3 w-2/3 bg-zinc-100 rounded mb-2" />
+                <div className="h-2 w-full bg-zinc-100 rounded" />
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-white">
-
       <main className="max-w-[980px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold text-zinc-900 mb-2">
               My <span className="text-orange-500">Leagues</span>
             </h1>
-            <p className="text-zinc-500">Create leagues, track standings, and play with your crew</p>
+            <p className="text-zinc-500">Simple view of all your leagues in one place.</p>
           </div>
-          {isPremium ? (
+          <div className="flex items-center gap-2">
             <Link
-              href="/leagues/create"
-              className="px-4 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors flex items-center gap-2"
+              href="/leagues/join"
+              className="px-4 py-2.5 border border-zinc-200 text-zinc-700 rounded-full text-sm font-medium hover:bg-zinc-50 transition-colors"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Create League
+              Join by Code
             </Link>
-          ) : (
-            <div className="px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-full text-sm font-medium text-amber-700 flex items-center gap-2">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
-              Premium Required
-            </div>
-          )}
+            {isPremium ? (
+              <Link
+                href="/leagues/create"
+                className="px-4 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors"
+              >
+                Create League
+              </Link>
+            ) : (
+              <div className="px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-full text-sm font-medium text-amber-700">
+                Premium Required
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Leagues I Own */}
-        <section className="mb-8 sm:mb-12">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h2 className="text-lg sm:text-xl font-semibold text-zinc-900">
-              Leagues I Own
-            </h2>
-            <span className="text-xs sm:text-sm text-zinc-500">
-              {ownedLeagues.length} league
-              {ownedLeagues.length !== 1 ? "s" : ""}
-            </span>
+        <div className="mb-6 rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5">
+          <div className="relative mb-4">
+            <svg
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search leagues..."
+              className="w-full pl-12 pr-4 py-3 rounded-full bg-zinc-100 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:bg-white transition-all"
+            />
           </div>
 
-          {ownedLeagues.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-zinc-200 p-6 sm:p-8 text-center">
-              <p className="text-zinc-500 mb-4 text-sm sm:text-base">
-                You haven&apos;t created any leagues yet.
-              </p>
-              {isPremium && (
+          <div className="flex flex-wrap gap-2">
+            <ViewChip
+              active={view === "all"}
+              label={`All (${viewCounts.all})`}
+              onClick={() => setView("all")}
+            />
+            <ViewChip
+              active={view === "owned"}
+              label={`Owned (${viewCounts.owned})`}
+              onClick={() => setView("owned")}
+            />
+            <ViewChip
+              active={view === "joined"}
+              label={`Joined (${viewCounts.joined})`}
+              onClick={() => setView("joined")}
+            />
+          </div>
+        </div>
+
+        {visibleLeagues.length === 0 ? (
+          <EmptyLeaguesState
+            title={
+              searchQuery
+                ? "No leagues match your search."
+                : view === "owned"
+                  ? "You have not created any leagues yet."
+                  : view === "joined"
+                    ? "You have not joined any leagues yet."
+                    : "You have no leagues yet."
+            }
+            action={
+              view !== "owned" ? (
+                <Link
+                  href="/leagues/join"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 border border-zinc-200 text-zinc-700 rounded-full text-sm font-medium hover:bg-zinc-50 transition-colors"
+                >
+                  Join League
+                </Link>
+              ) : isPremium ? (
                 <Link
                   href="/leagues/create"
-                  className="inline-block px-5 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors"
                 >
-                  Create Your First League
+                  Create League
                 </Link>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {ownedLeagues.map((league) => (
-                <LeagueCard key={league.id} league={league} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Leagues I'm In */}
-        <section>
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h2 className="text-lg sm:text-xl font-semibold text-zinc-900">
-              Leagues I&apos;m In
-            </h2>
-            <span className="text-xs sm:text-sm text-zinc-500">
-              {joinedLeagues.length} league
-              {joinedLeagues.length !== 1 ? "s" : ""}
-            </span>
+              ) : null
+            }
+          />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {visibleLeagues.map((league) => (
+              <LeagueCard key={league.id} league={league} />
+            ))}
           </div>
-
-          {joinedLeagues.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-zinc-200 p-6 sm:p-8 text-center">
-              <p className="text-zinc-500 text-sm sm:text-base">
-                You haven&apos;t joined any leagues yet.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {joinedLeagues.map((league) => (
-                <LeagueCard key={league.id} league={league} />
-              ))}
-            </div>
-          )}
-        </section>
+        )}
       </main>
     </div>
   );
 }
 
-function LeagueCard({ league }: { league: League }) {
+function ViewChip({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+        active ? "bg-orange-500 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function EmptyLeaguesState({ title, action }: { title: string; action?: ReactNode }) {
+  return (
+    <div className="bg-white rounded-2xl border border-zinc-200 p-6 sm:p-8 text-center">
+      <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-zinc-100 flex items-center justify-center">
+        <svg className="w-5 h-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </div>
+      <p className="text-zinc-600 mb-4 text-sm sm:text-base">{title}</p>
+      {action}
+    </div>
+  );
+}
+
+function LeagueCard({ league }: { league: LeagueWithRole }) {
+  const seasonProgress = getSeasonProgress(league);
+  const sportLabel = getSportLabel(league);
+  const sport = getSportKey(league);
+
   return (
     <Link
       href={`/leagues/${league.id}`}
-      className="block bg-white rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all p-4 sm:p-5 min-w-0"
+      className="group block bg-white rounded-2xl border border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all p-4 sm:p-5 min-w-0"
     >
-      <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3">
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
-          {(league.scoring_format === "singles" || league.scoring_format === "doubles") ? (
-            <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-full">
-              Tennis
+      <div className="h-1.5 rounded-full bg-gradient-to-r from-orange-500/80 to-amber-400/80 mb-3" />
+
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-zinc-100 text-zinc-600 flex items-center justify-center shrink-0">
+            {sport === "other" ? (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M12 4v16m8-8H4" />
+              </svg>
+            ) : (
+              <ActivityIcon id={sport} className="w-4 h-4" />
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+            <span className="px-2 py-0.5 bg-orange-50 text-orange-600 text-xs font-medium rounded-full capitalize">
+              {sportLabel}
             </span>
-          ) : (
-            <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-orange-50 text-orange-600 text-xs font-medium rounded-full capitalize">
-              {league.sport_type}
+            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
+              {FORMAT_LABELS[league.scoring_format] || league.scoring_format}
             </span>
-          )}
-          <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
-            {FORMAT_LABELS[league.scoring_format] || league.scoring_format}
-          </span>
+          </div>
         </div>
         <span
-          className={`px-2 sm:px-2.5 py-0.5 sm:py-1 text-xs font-medium rounded-full shrink-0 ${
-            league.status === "active"
-              ? "bg-orange-50 text-orange-600"
-              : league.status === "completed"
-              ? "bg-zinc-100 text-zinc-500"
-              : "bg-zinc-100 text-zinc-400"
+          className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+            league.membershipRole === "owner" ? "bg-amber-50 text-amber-700" : "bg-zinc-100 text-zinc-600"
           }`}
         >
-          {league.status}
+          {league.membershipRole === "owner" ? "Owner" : "Member"}
         </span>
       </div>
 
-      <h3 className="font-semibold text-zinc-900 mb-2 sm:mb-3 text-sm sm:text-base break-words">
+      <h3 className="font-semibold text-zinc-900 mb-3 text-sm sm:text-base break-words group-hover:text-zinc-700">
         {league.name}
       </h3>
 
-      <div className="text-xs sm:text-sm text-zinc-500 flex items-center gap-3">
+      <div className="text-xs sm:text-sm text-zinc-500 flex items-center gap-3 mb-3">
         <span className="flex items-center gap-1">
-          <svg
-            className="w-3.5 h-3.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
-            />
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19.1a9.4 9.4 0 0 0 2.6.4 9.3 9.3 0 0 0 4.1-1 4.1 4.1 0 0 0-7.5-2.5M15 19.1v.1A12.3 12.3 0 0 1 8.6 21a12.4 12.4 0 0 1-6.4-1.8v-.1a6.4 6.4 0 0 1 12-3.1M12 6.4a3.4 3.4 0 1 1-6.8 0 3.4 3.4 0 0 1 6.8 0Zm8.3 2.2a2.6 2.6 0 1 1-5.2 0 2.6 2.6 0 0 1 5.2 0Z" />
           </svg>
           {league.member_count}/{league.max_members}
         </span>
         <span className="capitalize">{league.league_type}</span>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <StatusBadge status={league.status} />
+        {seasonProgress ? (
+          <span className="text-xs text-zinc-500">{seasonProgress.label}</span>
+        ) : (
+          <span className="text-xs text-zinc-400">No season timeline</span>
+        )}
       </div>
     </Link>
   );

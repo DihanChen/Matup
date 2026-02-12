@@ -121,9 +121,33 @@ export default function PublicProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-zinc-500">Loading...</div>
-        </div>
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8 animate-pulse">
+          <div className="grid md:grid-cols-[1fr_auto] gap-8">
+            <div className="space-y-3">
+              <div className="h-6 w-40 bg-zinc-100 rounded-full" />
+              <div className="h-12 w-72 bg-zinc-200 rounded-xl" />
+              <div className="h-4 w-48 bg-zinc-100 rounded" />
+              <div className="h-10 w-36 bg-zinc-200 rounded-full" />
+            </div>
+            <div className="w-36 h-36 sm:w-40 sm:h-40 rounded-full bg-zinc-100" />
+          </div>
+          <div className="grid md:grid-cols-[1fr_340px] gap-8">
+            <div className="space-y-4">
+              <div className="h-6 w-32 bg-zinc-200 rounded" />
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 2, 3].map((item) => (
+                  <div key={`public-profile-skeleton-gallery-${item}`} className="aspect-square rounded-xl bg-zinc-100" />
+                ))}
+              </div>
+              <div className="h-6 w-36 bg-zinc-200 rounded mt-4" />
+              <div className="h-40 rounded-2xl border border-zinc-200 bg-zinc-50" />
+            </div>
+            <div className="space-y-4">
+              <div className="h-40 rounded-2xl border border-zinc-200 bg-zinc-50" />
+              <div className="h-28 rounded-2xl border border-zinc-200 bg-zinc-50" />
+            </div>
+          </div>
+        </main>
       </div>
     );
   }

@@ -1,111 +1,80 @@
 # MatUp Frontend
 
-A fitness partner matching web app for discovering events and leagues, meeting partners, and building a local community.
+Frontend web app for MatUp (events, leagues, social, auth, and host tools).
 
-## Tech Stack
-- Next.js 16 (App Router) + React 19
-- TypeScript (strict)
+## Stack
+- Next.js 16 (App Router), React 19, TypeScript
 - Tailwind CSS v4
-- Supabase (auth, data, storage)
-- Prisma + web-push (push subscription storage and delivery)
-- html2canvas (shareable event images)
+- Supabase (auth + data + storage)
+- html2canvas (event share image generation)
 
-## Features
-- Auth and profiles with avatar upload and activity preferences.
-- Events: browse, create, edit, join/leave, reviews/comments, and shareable templates.
-- Leagues: create, join/leave, record matches, and view standings across formats.
-- Friends and public user profiles.
-- Push notifications for nearby events (service worker + VAPID).
-- Location autocomplete via Nominatim (debounced to 1 req/sec).
+## Core Features
+- Authentication: sign up, login, forgot password, reset password
+- Events: browse, create, edit, join/leave, discussion, share
+- Leagues: browse, create, join/leave, standings, record results
+- Running leagues: session-based submissions, organizer review, and finalize workflow
+- Social: friends, profile editing, public user pages
+- Host messaging: event hosts and league owners can trigger group email via backend API
 
-## Design References
-- Latest UI screenshots live in `design/` (Intro, Explore, CreateEvent, EventDetail).
+## Local Development
 
-## Getting Started
+Requirements:
+- Node.js 20+
+- npm 10+
+
+Run:
 
 ```bash
-# Install dependencies
 npm install
-
-# Run development server
 npm run dev
+```
 
-# Build for production (includes prisma generate)
+Open [http://localhost:3000](http://localhost:3000).
+
+Build / start:
+
+```bash
 npm run build
-
-# Start production server
-npm start
+npm run start
 ```
-
-Open http://localhost:3000 in your browser.
-
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── api/push/          # Push notification routes
-│   ├── events/            # Event pages (list/create/detail/edit)
-│   ├── leagues/           # League pages (list/create/detail/record)
-│   ├── dashboard/         # User dashboard
-│   ├── friends/           # Friend management
-│   ├── profile/           # Profile editor
-│   ├── users/[id]/        # Public user profile
-│   ├── login/             # Auth (sign in)
-│   └── signup/            # Auth (sign up)
-├── components/            # Reusable UI components
-├── hooks/                 # Client hooks (push notifications)
-└── lib/                   # Utilities, API clients, push helpers
-```
-
-## Routes
-
-| Route | Description |
-|-------|-------------|
-| `/` | Landing page |
-| `/login` | Sign in |
-| `/signup` | Sign up |
-| `/dashboard` | User dashboard |
-| `/events` | Browse events |
-| `/events/create` | Create event |
-| `/events/[id]` | Event detail |
-| `/events/[id]/edit` | Edit event |
-| `/leagues` | Browse leagues |
-| `/leagues/create` | Create league |
-| `/leagues/[id]` | League detail |
-| `/leagues/[id]/record` | Record league results |
-| `/friends` | Friends |
-| `/profile` | Profile editor |
-| `/users/[id]` | Public user profile |
-
-## API Routes
-
-| Route | Description |
-|-------|-------------|
-| `/api/push/vapid-public-key` | Get VAPID public key |
-| `/api/push/subscribe` | Save push subscription |
-| `/api/push/unsubscribe` | Remove push subscription |
-| `/api/push/send` | Notify nearby users |
 
 ## Environment Variables
 
-```
+Create `.env.local`:
+
+```bash
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
-SUPABASE_SERVICE_KEY=
-DATABASE_URL=
-VAPID_PUBLIC_KEY=
-VAPID_PRIVATE_KEY=
-VAPID_SUBJECT=
 ```
 
 Notes:
-- `SUPABASE_SERVICE_KEY` is server-only (used in API routes).
-- `DATABASE_URL` is required for Prisma (push subscriptions).
+- `NEXT_PUBLIC_API_BASE_URL` must point to the deployed backend in production.
+- Do not expose server-only secrets in client environment files.
 
-## Learn More
+## Important Routes
 
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
-- [Supabase Documentation](https://supabase.com/docs)
+| Route | Purpose |
+|---|---|
+| `/` | Landing page |
+| `/login` | Sign in |
+| `/signup` | Create account |
+| `/forgot-password` | Request reset email |
+| `/reset-password` | Set new password from recovery link |
+| `/dashboard` | User dashboard |
+| `/events` | Event discovery |
+| `/events/create` | Create event |
+| `/events/[id]` | Event detail |
+| `/leagues` | League discovery |
+| `/leagues/create` | Create league |
+| `/leagues/join` | Join a league via invite code |
+| `/leagues/[id]` | League detail |
+| `/friends` | Friend management |
+| `/profile` | Profile settings |
+
+## Deployment Notes
+- Deploy frontend on Vercel.
+- Set `NEXT_PUBLIC_API_BASE_URL` to your backend URL (for example: `https://matup-backend.onrender.com`).
+- In Supabase Auth settings, add redirect URLs for:
+  - `https://<your-frontend-domain>/reset-password`
+  - `http://localhost:3000/reset-password`

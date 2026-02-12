@@ -7,8 +7,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import LocationAutocomplete from "@/components/LocationAutocomplete";
-import { notifyNearbyUsers } from "@/lib/push-notifications";
-import ActivityCard, { ACTIVITIES, ActivityIcon } from "@/components/create-event/ActivityCard";
+import ActivityCard, { ACTIVITIES } from "@/components/create-event/ActivityCard";
 import StepIndicator, { StepLabel } from "@/components/create-event/StepIndicator";
 interface FormData {
   sportType: string;
@@ -71,6 +70,11 @@ const QUICK_TIMES = [
   { value: '20:00', label: '08:00 PM' },
   { value: '21:00', label: '09:00 PM' },
 ];
+
+function getCoverSrcForSport(sportType: string): string {
+  if (sportType === "pickleball") return "/covers/tennis.jpg";
+  return `/covers/${sportType}.jpg`;
+}
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -170,20 +174,6 @@ export default function CreateEventPage() {
       return;
     }
 
-    if (formData.coordinates && eventData?.id) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          await notifyNearbyUsers(
-            session.access_token, eventData.id, title,
-            formData.location, formData.coordinates.lat, formData.coordinates.lng
-          );
-        }
-      } catch (notifyError) {
-        console.error("Failed to send notifications:", notifyError);
-      }
-    }
-
     setCreatedEventId(eventData?.id || null);
     setShowSuccess(true);
     setLoading(false);
@@ -203,9 +193,27 @@ export default function CreateEventPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-zinc-500">Loading...</div>
-        </div>
+        <main className="max-w-[980px] mx-auto px-4 sm:px-6 py-8 sm:py-12 animate-pulse">
+          <div className="h-8 w-56 bg-zinc-200 rounded-xl mb-3" />
+          <div className="h-4 w-72 bg-zinc-100 rounded mb-8" />
+
+          <div className="flex items-center gap-3 mb-8">
+            {[1, 2, 3].map((item) => (
+              <div key={`create-step-skeleton-${item}`} className="h-8 w-20 rounded-full bg-zinc-100" />
+            ))}
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 p-6 sm:p-8">
+            <div className="h-6 w-48 bg-zinc-200 rounded mb-4" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+              {[1, 2, 3, 4, 5, 6].map((item) => (
+                <div key={`create-activity-skeleton-${item}`} className="h-24 rounded-2xl bg-zinc-100" />
+              ))}
+            </div>
+            <div className="h-12 w-full bg-zinc-100 rounded-full mb-3" />
+            <div className="h-12 w-40 bg-zinc-200 rounded-full ml-auto" />
+          </div>
+        </main>
       </div>
     );
   }
@@ -234,7 +242,7 @@ export default function CreateEventPage() {
             <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden text-left mb-6">
               <div className="bg-zinc-100 h-36 relative overflow-hidden">
                 <Image
-                  src={`/covers/${formData.sportType}.jpg`}
+                  src={getCoverSrcForSport(formData.sportType)}
                   alt={`${formData.sportType} cover`}
                   fill
                   sizes="(max-width: 768px) 100vw, 400px"
@@ -633,7 +641,7 @@ export default function CreateEventPage() {
                   </div>
                   <div className="relative h-[160px] sm:h-[200px] rounded-2xl overflow-hidden bg-zinc-100">
                     <Image
-                      src={`/covers/${formData.sportType}.jpg`}
+                      src={getCoverSrcForSport(formData.sportType)}
                       alt={`${formData.sportType} cover`}
                       fill
                       sizes="(max-width: 768px) 100vw, 50vw"
