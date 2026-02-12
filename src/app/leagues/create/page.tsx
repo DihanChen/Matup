@@ -171,8 +171,16 @@ export default function CreateLeaguePage() {
     }
 
     // Determine scoring format based on sport
-    const scoringFormat: "individual_time" | "singles" | "doubles" =
-      formData.sportType === "running" ? "individual_time" : formData.matchType;
+    let scoringFormat: "individual_time" | "singles" | "doubles";
+    if (formData.sportType === "running") {
+      scoringFormat = "individual_time";
+    } else if (formData.matchType === "singles" || formData.matchType === "doubles") {
+      scoringFormat = formData.matchType;
+    } else {
+      setError("Please select a valid match format.");
+      setLoading(false);
+      return;
+    }
     const shouldSetRotationType =
       (formData.sportType === "tennis" || formData.sportType === "pickleball") &&
       formData.matchType === "doubles";

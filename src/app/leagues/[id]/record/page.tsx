@@ -17,7 +17,7 @@ import { getInitials } from "@/lib/league-utils";
 
 type League = Pick<
   LeagueDetails,
-  "id" | "name" | "scoring_format" | "league_type" | "season_weeks" | "rotation_type"
+  "id" | "name" | "sport_type" | "scoring_format" | "league_type" | "season_weeks" | "rotation_type"
 >;
 
 type MemberInfo = Pick<LeagueMember, "user_id" | "role" | "name" | "avatar_url">;
@@ -121,7 +121,7 @@ export default function RecordResultsPage() {
 
       const { data: leagueData } = await supabase
         .from("leagues")
-        .select("id, name, scoring_format, league_type, season_weeks, rotation_type")
+        .select("id, name, sport_type, scoring_format, league_type, season_weeks, rotation_type")
         .eq("id", leagueId)
         .single();
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { getApiBaseUrl } from "@/lib/api";
@@ -13,7 +13,7 @@ type LeaguePreview = {
   scoring_format: string;
 };
 
-export default function JoinLeaguePage() {
+function JoinLeagueContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialLeagueId = searchParams.get("leagueId") || "";
@@ -255,5 +255,30 @@ export default function JoinLeaguePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function JoinLeaguePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white">
+          <main className="max-w-md mx-auto px-4 py-12 sm:py-16 space-y-4 animate-pulse">
+            <div className="h-5 w-28 bg-zinc-200 rounded" />
+            <div className="bg-white rounded-2xl border border-zinc-200 p-6 space-y-4">
+              <div className="h-7 w-48 bg-zinc-200 rounded" />
+              <div className="h-4 w-56 bg-zinc-100 rounded" />
+              <div className="space-y-2">
+                <div className="h-3 w-20 bg-zinc-200 rounded" />
+                <div className="h-12 w-full bg-zinc-100 rounded-xl" />
+              </div>
+              <div className="h-12 w-full bg-zinc-200 rounded-full" />
+            </div>
+          </main>
+        </div>
+      }
+    >
+      <JoinLeagueContent />
+    </Suspense>
   );
 }
