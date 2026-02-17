@@ -6,6 +6,22 @@ import { getApiBaseUrl } from "@/lib/api";
 import type { SubmitResultPayload } from "@/lib/league-types";
 
 type SetScore = { a: string; b: string };
+type ForfeitReason =
+  | "opponent_no_show"
+  | "opponent_injury"
+  | "self_injury"
+  | "weather"
+  | "facility_issue"
+  | "other";
+
+const FORFEIT_REASON_OPTIONS: Array<{ value: ForfeitReason; label: string }> = [
+  { value: "opponent_no_show", label: "Opponent did not show up" },
+  { value: "opponent_injury", label: "Opponent injury" },
+  { value: "self_injury", label: "Self/team injury" },
+  { value: "weather", label: "Weather" },
+  { value: "facility_issue", label: "Facility issue" },
+  { value: "other", label: "Other" },
+];
 
 type SubmitResultModalProps = {
   isOpen: boolean;
@@ -28,8 +44,10 @@ export default function SubmitResultModal({
   sideB,
   onSuccess,
 }: SubmitResultModalProps) {
+  const [outcomeType, setOutcomeType] = useState<"played" | "forfeit">("played");
   const [scoreMode, setScoreMode] = useState<"simple" | "detailed">("simple");
   const [winner, setWinner] = useState<"A" | "B" | "">("");
+  const [forfeitReason, setForfeitReason] = useState<ForfeitReason>("opponent_no_show");
   const [sets, setSets] = useState<SetScore[]>([{ a: "", b: "" }]);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -37,8 +55,10 @@ export default function SubmitResultModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    setOutcomeType("played");
     setScoreMode("simple");
     setWinner("");
+    setForfeitReason("opponent_no_show");
     setSets([{ a: "", b: "" }]);
     setNotes("");
     setError(null);
@@ -46,11 +66,11 @@ export default function SubmitResultModal({
   }, [isOpen]);
 
   const sideANames = useMemo(
-    () => sideA.map((p) => p.name || "?").join(" & ") || "Side A",
+    () => sideA.map((participant) => participant.name || "?").join(" & ") || "Side A",
     [sideA]
   );
   const sideBNames = useMemo(
-    () => sideB.map((p) => p.name || "?").join(" & ") || "Side B",
+    () => sideB.map((participant) => participant.name || "?").join(" & ") || "Side B",
     [sideB]
   );
 
@@ -90,23 +110,30 @@ export default function SubmitResultModal({
     setSubmitting(true);
     setError(null);
 
+    const isForfeit = outcomeType === "forfeit";
     const parsedSetScores =
-      scoreMode === "detailed"
+      !isForfeit && scoreMode === "detailed"
         ? sets
             .filter((set) => set.a !== "" && set.b !== "")
             .map((set) => [parseInt(set.a, 10), parseInt(set.b, 10)])
         : undefined;
-    const detectedWinner = scoreMode === "detailed" ? getWinnerFromSets() : winner;
+    const detectedWinner =
+      !isForfeit && scoreMode === "detailed" ? getWinnerFromSets() : winner;
 
     if (!detectedWinner) {
-      setError("Select a winner before submitting.");
+      setError("Select who should receive the win before submitting.");
       setSubmitting(false);
       return;
     }
 
     const payload: SubmitResultPayload = {
       winner: detectedWinner,
-      sets: parsedSetScores && parsedSetScores.length > 0 ? parsedSetScores : undefined,
+      sets:
+        !isForfeit && parsedSetScores && parsedSetScores.length > 0
+          ? parsedSetScores
+          : undefined,
+      outcome_type: isForfeit ? "forfeit" : "played",
+      forfeit_reason: isForfeit ? forfeitReason : undefined,
       notes: notes.trim() ? notes.trim() : undefined,
     };
 
@@ -195,48 +222,118 @@ export default function SubmitResultModal({
         <div className="flex bg-zinc-100 rounded-full p-0.5 mb-4">
           <button
             type="button"
-            onClick={() => setScoreMode("simple")}
+            onClick={() => setOutcomeType("played")}
             className={`flex-1 px-3 py-1 rounded-full text-xs font-medium transition-all ${
-              scoreMode === "simple" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
+              outcomeType === "played" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
             }`}
           >
-            Winner Only
+            Match Played
           </button>
           <button
             type="button"
-            onClick={() => setScoreMode("detailed")}
+            onClick={() => setOutcomeType("forfeit")}
             className={`flex-1 px-3 py-1 rounded-full text-xs font-medium transition-all ${
-              scoreMode === "detailed" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
+              outcomeType === "forfeit" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
             }`}
           >
-            {detailedScoreModeLabel}
+            Forfeit / Cancel
           </button>
         </div>
 
-        {scoreMode === "simple" ? (
-          <div className="grid grid-cols-2 gap-4">
+        {outcomeType === "played" && (
+          <div className="flex bg-zinc-100 rounded-full p-0.5 mb-4">
             <button
               type="button"
-              onClick={() => setWinner("A")}
-              className={`p-5 rounded-xl border-2 text-center transition-all ${
-                winner === "A"
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-zinc-200 hover:border-blue-300"
+              onClick={() => setScoreMode("simple")}
+              className={`flex-1 px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                scoreMode === "simple" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
               }`}
             >
-              <div className="text-sm font-medium text-blue-700 mb-1">{sideANames} Wins</div>
+              Winner Only
             </button>
             <button
               type="button"
-              onClick={() => setWinner("B")}
-              className={`p-5 rounded-xl border-2 text-center transition-all ${
-                winner === "B"
-                  ? "border-red-500 bg-red-50"
-                  : "border-zinc-200 hover:border-red-300"
+              onClick={() => setScoreMode("detailed")}
+              className={`flex-1 px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                scoreMode === "detailed" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
               }`}
             >
-              <div className="text-sm font-medium text-red-700 mb-1">{sideBNames} Wins</div>
+              {detailedScoreModeLabel}
             </button>
+          </div>
+        )}
+
+        {outcomeType === "forfeit" ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 mb-1.5">Reason</label>
+              <select
+                value={forfeitReason}
+                onChange={(event) => setForfeitReason(event.target.value as ForfeitReason)}
+                className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              >
+                {FORFEIT_REASON_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <p className="text-sm text-zinc-600 mb-3">Award win to</p>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setWinner("A")}
+                  className={`p-5 rounded-xl border-2 text-center transition-all ${
+                    winner === "A"
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-zinc-200 hover:border-blue-300"
+                  }`}
+                >
+                  <div className="text-sm font-medium text-blue-700">{sideANames}</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWinner("B")}
+                  className={`p-5 rounded-xl border-2 text-center transition-all ${
+                    winner === "B"
+                      ? "border-red-500 bg-red-50"
+                      : "border-zinc-200 hover:border-red-300"
+                  }`}
+                >
+                  <div className="text-sm font-medium text-red-700">{sideBNames}</div>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : scoreMode === "simple" ? (
+          <div>
+            <p className="text-sm text-zinc-600 mb-3">Select winner</p>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setWinner("A")}
+                className={`p-5 rounded-xl border-2 text-center transition-all ${
+                  winner === "A"
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-zinc-200 hover:border-blue-300"
+                }`}
+              >
+                <div className="text-sm font-medium text-blue-700">{sideANames}</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setWinner("B")}
+                className={`p-5 rounded-xl border-2 text-center transition-all ${
+                  winner === "B"
+                    ? "border-red-500 bg-red-50"
+                    : "border-zinc-200 hover:border-red-300"
+                }`}
+              >
+                <div className="text-sm font-medium text-red-700">{sideBNames}</div>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
@@ -315,9 +412,7 @@ export default function SubmitResultModal({
           />
         </div>
 
-        {error && (
-          <p className="text-sm text-red-500 mt-3">{error}</p>
-        )}
+        {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
 
         <div className="flex gap-3 mt-6">
           <button
@@ -325,7 +420,11 @@ export default function SubmitResultModal({
             disabled={submitting}
             className="flex-1 py-3 bg-orange-500 text-white rounded-full font-medium hover:bg-orange-600 transition-colors disabled:opacity-50"
           >
-            {submitting ? "Submitting..." : "Submit Result"}
+            {submitting
+              ? "Submitting..."
+              : outcomeType === "forfeit"
+              ? "Submit Forfeit Outcome"
+              : "Submit Result"}
           </button>
           <button
             onClick={onClose}

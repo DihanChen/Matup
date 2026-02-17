@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import EventCard from "@/components/EventCard";
+import { createClient } from "@/lib/supabase";
 
 type Profile = {
   id: string;
@@ -14,6 +14,7 @@ type Profile = {
   avatar_url: string | null;
   is_premium?: boolean;
   bio?: string | null;
+  gallery_urls?: string[];
 };
 
 type Event = {
@@ -36,9 +37,63 @@ type Badge = {
   color: string;
 };
 
+type Toast = {
+  type: "success" | "error";
+  text: string;
+};
+
+const MAX_GALLERY_IMAGES = 9;
+const MAX_GALLERY_UPLOAD_BATCH = 4;
+const MAX_AVATAR_FILE_SIZE_BYTES = 2 * 1024 * 1024;
+const MAX_GALLERY_FILE_SIZE_BYTES = 3 * 1024 * 1024;
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
+function isAllowedImageType(file: File) {
+  return ALLOWED_IMAGE_MIME_TYPES.has(file.type);
+}
+
+function getInitials(name: string | null) {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function splitName(name: string | null) {
+  if (!name) return { first: "Anonymous", last: "User" };
+  const parts = name.trim().split(" ");
+  if (parts.length === 1) return { first: parts[0], last: "" };
+  return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
+}
+
+function normalizeGalleryUrls(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+function isLegacyProfileColumnError(error: unknown): boolean {
+  const message = typeof error === "object" && error !== null && "message" in error
+    ? String((error as { message?: unknown }).message)
+    : "";
+  return (
+    message.includes("column profiles.bio does not exist") ||
+    message.includes("column profiles.gallery_urls does not exist")
+  );
+}
+
 export default function PublicProfilePage() {
   const params = useParams();
   const userId = params.id as string;
+
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -48,72 +103,417 @@ export default function PublicProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [activityTab, setActivityTab] = useState<"upcoming" | "past">("upcoming");
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editBio, setEditBio] = useState("");
+  const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
+  const [toast, setToast] = useState<Toast | null>(null);
+
+  const isOwnProfile = currentUser?.id === userId;
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  useEffect(() => {
+    if (!profile) return;
+    setEditName(profile.name || "");
+    setEditBio(profile.bio || "");
+    setGalleryUrls(profile.gallery_urls || []);
+  }, [profile]);
+
   useEffect(() => {
     async function fetchData() {
       const supabase = createClient();
+      setLoading(true);
+      setError(null);
 
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUser(user);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        setCurrentUser(user);
 
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("id, name, avatar_url, is_premium")
-        .eq("id", userId)
-        .single();
+        const profileQuery = await supabase
+          .from("profiles")
+          .select("id, name, avatar_url, is_premium, bio, gallery_urls")
+          .eq("id", userId)
+          .single();
 
-      if (profileError || !profileData) {
-        setError("User not found");
+        let profileData: Profile | null = null;
+
+        if (!profileQuery.error && profileQuery.data) {
+          profileData = profileQuery.data as Profile;
+        } else if (isLegacyProfileColumnError(profileQuery.error)) {
+          const fallbackQuery = await supabase
+            .from("profiles")
+            .select("id, name, avatar_url, is_premium")
+            .eq("id", userId)
+            .single();
+
+          if (fallbackQuery.error || !fallbackQuery.data) {
+            setError("User not found");
+            setLoading(false);
+            return;
+          }
+
+          profileData = fallbackQuery.data as Profile;
+        } else {
+          setError("User not found");
+          setLoading(false);
+          return;
+        }
+
+        const ownMeta = user?.id === userId ? user.user_metadata : null;
+        const mergedProfile: Profile = {
+          id: profileData.id,
+          name:
+            profileData.name ||
+            (typeof ownMeta?.name === "string" ? ownMeta.name : null) ||
+            (typeof ownMeta?.full_name === "string" ? ownMeta.full_name : null),
+          avatar_url:
+            profileData.avatar_url ||
+            (typeof ownMeta?.avatar_url === "string" ? ownMeta.avatar_url : null) ||
+            (typeof ownMeta?.picture === "string" ? ownMeta.picture : null),
+          is_premium: profileData.is_premium,
+          bio:
+            profileData.bio ||
+            (typeof ownMeta?.bio === "string" ? ownMeta.bio : null),
+          gallery_urls:
+            normalizeGalleryUrls(profileData.gallery_urls) ||
+            normalizeGalleryUrls(ownMeta?.gallery_urls),
+        };
+
+        setProfile(mergedProfile);
+
+        const nowIso = new Date().toISOString();
+        const [{ data: hostedUpcoming }, { data: hostedPast }] = await Promise.all([
+          supabase
+            .from("events")
+            .select("*")
+            .eq("creator_id", userId)
+            .gte("datetime", nowIso)
+            .order("datetime", { ascending: true })
+            .limit(4),
+          supabase
+            .from("events")
+            .select("*")
+            .eq("creator_id", userId)
+            .lt("datetime", nowIso)
+            .order("datetime", { ascending: false })
+            .limit(4),
+        ]);
+
+        setUpcomingEvents(hostedUpcoming || []);
+        setPastEvents(hostedPast || []);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      setProfile(profileData);
-
-      // Upcoming events (hosted or participating)
-      const { data: hostedUpcoming } = await supabase
-        .from("events")
-        .select("*")
-        .eq("creator_id", userId)
-        .gte("datetime", new Date().toISOString())
-        .order("datetime", { ascending: true })
-        .limit(4);
-
-      setUpcomingEvents(hostedUpcoming || []);
-
-      // Past events
-      const { data: hostedPast } = await supabase
-        .from("events")
-        .select("*")
-        .eq("creator_id", userId)
-        .lt("datetime", new Date().toISOString())
-        .order("datetime", { ascending: false })
-        .limit(4);
-
-      setPastEvents(hostedPast || []);
-
-      setLoading(false);
     }
 
-    fetchData();
+    if (userId) {
+      fetchData();
+    } else {
+      setError("User not found");
+      setLoading(false);
+    }
   }, [userId]);
 
-  const getInitials = (name: string | null) => {
-    if (!name) return "?";
-    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-  };
+  async function persistOwnProfile(next: {
+    name: string;
+    bio: string;
+    avatarUrl: string | null;
+    gallery: string[];
+  }) {
+    if (!currentUser || currentUser.id !== userId) {
+      throw new Error("Not authorized to edit this profile.");
+    }
 
-  const splitName = (name: string | null) => {
-    if (!name) return { first: "Anonymous", last: "User" };
-    const parts = name.trim().split(" ");
-    if (parts.length === 1) return { first: parts[0], last: "" };
-    return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
-  };
+    const supabase = createClient();
 
-  // Generate badges based on activity
+    const { error: authError } = await supabase.auth.updateUser({
+      data: {
+        name: next.name || null,
+        bio: next.bio || null,
+        avatar_url: next.avatarUrl,
+        gallery_urls: next.gallery,
+      },
+    });
+
+    if (authError) throw authError;
+
+    const extendedPayload = {
+      id: currentUser.id,
+      name: next.name || null,
+      avatar_url: next.avatarUrl,
+      bio: next.bio || null,
+      gallery_urls: next.gallery,
+    };
+
+    const basePayload = {
+      id: currentUser.id,
+      name: next.name || null,
+      avatar_url: next.avatarUrl,
+    };
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .upsert(extendedPayload, { onConflict: "id" });
+
+    if (profileError) {
+      if (!isLegacyProfileColumnError(profileError)) {
+        throw profileError;
+      }
+
+      const { error: fallbackError } = await supabase
+        .from("profiles")
+        .upsert(basePayload, { onConflict: "id" });
+
+      if (fallbackError) throw fallbackError;
+    }
+  }
+
+  async function handleSaveProfile() {
+    if (!profile || !isOwnProfile) return;
+
+    const nextName = editName.trim();
+    const nextBio = editBio.trim();
+
+    if (!nextName) {
+      setToast({ type: "error", text: "Display name is required." });
+      return;
+    }
+
+    setSavingProfile(true);
+    try {
+      await persistOwnProfile({
+        name: nextName,
+        bio: nextBio,
+        avatarUrl: profile.avatar_url,
+        gallery: galleryUrls,
+      });
+
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              name: nextName,
+              bio: nextBio || null,
+              gallery_urls: galleryUrls,
+            }
+          : prev
+      );
+      setIsEditing(false);
+      setToast({ type: "success", text: "Profile updated." });
+    } catch (saveError) {
+      const message =
+        saveError instanceof Error ? saveError.message : "Failed to save profile.";
+      setToast({ type: "error", text: message });
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !profile || !currentUser || !isOwnProfile) return;
+
+    if (!isAllowedImageType(file)) {
+      setToast({ type: "error", text: "Avatar must be JPG, PNG, or WebP." });
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_FILE_SIZE_BYTES) {
+      setToast({ type: "error", text: "Image must be less than 2MB." });
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const supabase = createClient();
+      const fileExt = file.name.split(".").pop() || "jpg";
+      const fileName = `${currentUser.id}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("avatars").getPublicUrl(fileName);
+
+      await persistOwnProfile({
+        name: editName.trim() || profile.name || "",
+        bio: editBio.trim(),
+        avatarUrl: publicUrl,
+        gallery: galleryUrls,
+      });
+
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              avatar_url: publicUrl,
+            }
+          : prev
+      );
+
+      setToast({ type: "success", text: "Photo updated." });
+    } catch (uploadError) {
+      const message =
+        uploadError instanceof Error ? uploadError.message : "Failed to upload photo.";
+      setToast({ type: "error", text: message });
+    } finally {
+      setUploadingAvatar(false);
+      if (e.target) e.target.value = "";
+    }
+  }
+
+  async function handleGalleryUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !profile || !isOwnProfile || !currentUser) return;
+
+    const remainingSlots = MAX_GALLERY_IMAGES - galleryUrls.length;
+    if (remainingSlots <= 0) {
+      setToast({ type: "error", text: "Gallery is full." });
+      return;
+    }
+
+    if (files.length > remainingSlots) {
+      setToast({
+        type: "error",
+        text: `You can upload ${remainingSlots} more photo${remainingSlots === 1 ? "" : "s"}.`,
+      });
+      return;
+    }
+
+    if (files.length > MAX_GALLERY_UPLOAD_BATCH) {
+      setToast({
+        type: "error",
+        text: `Upload up to ${MAX_GALLERY_UPLOAD_BATCH} photos at a time.`,
+      });
+      return;
+    }
+
+    const selectedFiles = Array.from(files);
+
+    for (const file of selectedFiles) {
+      if (!isAllowedImageType(file)) {
+        setToast({ type: "error", text: "Gallery photos must be JPG, PNG, or WebP." });
+        return;
+      }
+      if (file.size > MAX_GALLERY_FILE_SIZE_BYTES) {
+        setToast({ type: "error", text: "Each gallery image must be less than 3MB." });
+        return;
+      }
+    }
+
+    setUploadingGallery(true);
+
+    try {
+      const supabase = createClient();
+      const uploadedUrls: string[] = [];
+
+      for (const [index, file] of selectedFiles.entries()) {
+        const fileExt = file.name.split(".").pop() || "jpg";
+        const filePath = `${currentUser.id}/gallery/${Date.now()}-${index}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("avatars")
+          .upload(filePath, file, { upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("avatars").getPublicUrl(filePath);
+
+        uploadedUrls.push(publicUrl);
+      }
+
+      const nextGallery = [...galleryUrls, ...uploadedUrls].slice(0, MAX_GALLERY_IMAGES);
+
+      await persistOwnProfile({
+        name: editName.trim() || profile.name || "",
+        bio: editBio.trim(),
+        avatarUrl: profile.avatar_url,
+        gallery: nextGallery,
+      });
+
+      setGalleryUrls(nextGallery);
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              gallery_urls: nextGallery,
+            }
+          : prev
+      );
+
+      setToast({ type: "success", text: "Gallery updated." });
+    } catch (galleryError) {
+      const message =
+        galleryError instanceof Error
+          ? galleryError.message
+          : "Failed to upload gallery photos.";
+      setToast({ type: "error", text: message });
+    } finally {
+      setUploadingGallery(false);
+      if (e.target) e.target.value = "";
+    }
+  }
+
+  async function handleRemoveGalleryImage(index: number) {
+    if (!profile || !isOwnProfile) return;
+
+    const nextGallery = galleryUrls.filter((_, imageIndex) => imageIndex !== index);
+
+    setSavingProfile(true);
+    try {
+      await persistOwnProfile({
+        name: editName.trim() || profile.name || "",
+        bio: editBio.trim(),
+        avatarUrl: profile.avatar_url,
+        gallery: nextGallery,
+      });
+
+      setGalleryUrls(nextGallery);
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              gallery_urls: nextGallery,
+            }
+          : prev
+      );
+      setToast({ type: "success", text: "Photo removed." });
+    } catch (removeError) {
+      const message =
+        removeError instanceof Error ? removeError.message : "Failed to remove photo.";
+      setToast({ type: "error", text: message });
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
   const getBadges = (): Badge[] => {
     const badges: Badge[] = [];
     if (pastEvents.length >= 3) {
-      badges.push({ icon: "team", label: "Team Player", description: `Hosted ${pastEvents.length}+ events`, color: "bg-blue-500" });
+      badges.push({
+        icon: "team",
+        label: "Team Player",
+        description: `Hosted ${pastEvents.length}+ events`,
+        color: "bg-blue-500",
+      });
     }
     return badges;
   };
@@ -167,20 +567,25 @@ export default function PublicProfilePage() {
     );
   }
 
-  const isOwnProfile = currentUser?.id === userId;
-  const { first, last } = splitName(profile.name);
+  const { first, last } = splitName(isOwnProfile && isEditing ? editName : profile.name);
   const badges = getBadges();
   const activityEvents = activityTab === "upcoming" ? upcomingEvents : pastEvents;
 
   return (
     <div className="min-h-screen bg-white">
+      {toast && (
+        <div
+          className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-full font-medium shadow-lg transition-all text-sm ${
+            toast.type === "success" ? "bg-zinc-900 text-white" : "bg-red-500 text-white"
+          }`}
+        >
+          {toast.text}
+        </div>
+      )}
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        {/* Profile Header */}
         <div className="grid md:grid-cols-[1fr_auto] gap-8 mb-10">
-          {/* Left: Name & Info */}
           <div>
-            {/* Badges */}
             <div className="flex items-center gap-2 mb-3">
               {profile.is_premium && (
                 <span className="px-3 py-1 bg-orange-500 text-white text-xs font-bold rounded-full">
@@ -189,45 +594,100 @@ export default function PublicProfilePage() {
               )}
               <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded-full flex items-center gap-1">
                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  <path
+                    fillRule="evenodd"
+                    d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 Verified
               </span>
             </div>
 
-            {/* Name */}
             <h1 className="text-4xl sm:text-5xl font-bold mb-3">
               <span className="text-zinc-900">{first} </span>
               <span className="text-orange-500">{last}</span>
             </h1>
 
-            {/* Bio / subtitle */}
-            <p className="text-zinc-500 text-sm mb-5">
-              {(profile as Profile & { bio?: string }).bio || "Sports enthusiast"}
-            </p>
+            {!isOwnProfile || !isEditing ? (
+              <p className="text-zinc-500 text-sm mb-5">
+                {profile.bio || "Sports enthusiast"}
+              </p>
+            ) : (
+              <div className="mb-5 space-y-3 max-w-md">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    placeholder="Your name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">
+                    Bio
+                  </label>
+                  <textarea
+                    value={editBio}
+                    onChange={(e) => setEditBio(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2.5 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                    placeholder="Tell people about yourself"
+                  />
+                </div>
+              </div>
+            )}
 
-            {/* Invite button */}
             {!isOwnProfile && (
               <Link
-                href={`/events/create`}
+                href="/events/create"
                 className="inline-flex items-center px-5 py-2.5 bg-zinc-900 text-white text-sm font-medium rounded-full hover:bg-zinc-800 transition-colors"
               >
                 Invite to Game
               </Link>
             )}
-            {isOwnProfile && (
-              <Link
-                href="/profile"
+
+            {isOwnProfile && !isEditing && (
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
                 className="inline-flex items-center px-5 py-2.5 border border-zinc-300 text-zinc-700 text-sm font-medium rounded-full hover:bg-zinc-50 transition-colors"
               >
                 Edit Profile
-              </Link>
+              </button>
+            )}
+
+            {isOwnProfile && isEditing && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveProfile}
+                  disabled={savingProfile || uploadingAvatar || uploadingGallery}
+                  className="inline-flex items-center px-5 py-2.5 bg-zinc-900 text-white text-sm font-medium rounded-full hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                >
+                  {savingProfile ? "Saving..." : "Save Profile"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditName(profile.name || "");
+                    setEditBio(profile.bio || "");
+                    setGalleryUrls(profile.gallery_urls || []);
+                  }}
+                  className="inline-flex items-center px-5 py-2.5 border border-zinc-300 text-zinc-700 text-sm font-medium rounded-full hover:bg-zinc-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             )}
           </div>
 
-          {/* Right: Avatar */}
           <div className="flex flex-col items-center gap-4">
-            {/* Avatar */}
             <div className="relative">
               {profile.avatar_url ? (
                 <Image
@@ -244,28 +704,101 @@ export default function PublicProfilePage() {
               )}
             </div>
 
+            {isOwnProfile && (
+              <>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={uploadingAvatar || savingProfile}
+                  className="px-4 py-2 text-xs font-medium rounded-full border border-zinc-300 text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+                >
+                  {uploadingAvatar ? "Uploading..." : "Change Photo"}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Content Grid */}
         <div className="grid md:grid-cols-[1fr_340px] gap-8">
-          {/* Left Column */}
           <div className="space-y-8">
-            {/* Photo Gallery Placeholder */}
             <section>
-              <h2 className="text-lg font-bold text-zinc-900 mb-4">Photo Gallery</h2>
-              <div className="grid grid-cols-3 gap-2">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="aspect-square bg-zinc-100 rounded-xl flex items-center justify-center">
-                    <svg className="w-8 h-8 text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
-                    </svg>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-zinc-900">Photo Gallery</h2>
+                {isOwnProfile && (
+                  <>
+                    <input
+                      ref={galleryInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      onChange={handleGalleryUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isEditing) setIsEditing(true);
+                        galleryInputRef.current?.click();
+                      }}
+                      disabled={uploadingGallery || savingProfile || galleryUrls.length >= MAX_GALLERY_IMAGES}
+                      className="px-4 py-2 text-xs font-medium rounded-full border border-zinc-300 text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+                    >
+                      {uploadingGallery ? "Uploading..." : "Add Photos"}
+                    </button>
+                  </>
+                )}
               </div>
+
+              {galleryUrls.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {galleryUrls.map((url, index) => (
+                    <div key={`${url}-${index}`} className="relative aspect-square rounded-xl overflow-hidden bg-zinc-100">
+                      <Image
+                        src={url}
+                        alt={`Gallery ${index + 1}`}
+                        fill
+                        sizes="(max-width: 768px) 33vw, 240px"
+                        className="object-cover"
+                      />
+                      {isOwnProfile && isEditing && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveGalleryImage(index)}
+                          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/65 text-white text-xs flex items-center justify-center hover:bg-black/80"
+                          aria-label={`Remove gallery image ${index + 1}`}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="aspect-square bg-zinc-100 rounded-xl flex items-center justify-center">
+                      <svg className="w-8 h-8 text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+                      </svg>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {isOwnProfile && (
+                <p className="text-xs text-zinc-500 mt-3">
+                  {galleryUrls.length}/{MAX_GALLERY_IMAGES} photos. JPG/PNG/WebP only, max 3MB each, up to 4 uploads per action.
+                </p>
+              )}
             </section>
 
-            {/* Activity Feed */}
             <section>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-zinc-900">Activity Feed</h2>
@@ -307,9 +840,7 @@ export default function PublicProfilePage() {
             </section>
           </div>
 
-          {/* Right Column */}
           <div className="space-y-6">
-            {/* Badges */}
             <section className="bg-white rounded-2xl border border-zinc-200 p-5">
               <h3 className="text-base font-bold text-zinc-900 mb-4">Badges</h3>
               {badges.length === 0 ? (
@@ -344,7 +875,6 @@ export default function PublicProfilePage() {
                 </div>
               )}
             </section>
-
           </div>
         </div>
       </main>

@@ -163,6 +163,14 @@ export type SubmitResultPayload = {
   winner: "A" | "B";
   sets?: number[][];
   notes?: string;
+  outcome_type?: "played" | "forfeit";
+  forfeit_reason?:
+    | "opponent_no_show"
+    | "opponent_injury"
+    | "self_injury"
+    | "weather"
+    | "facility_issue"
+    | "other";
 };
 
 export const FORMAT_LABELS: Record<string, string> = {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import GoogleOAuthButton from "@/components/auth/GoogleOAuthButton";
 import { createClient } from "@/lib/supabase";
 
 export default function LoginPage() {
@@ -33,6 +34,7 @@ function LoginContent() {
   const message = searchParams.get("message");
 
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -68,6 +70,24 @@ function LoginContent() {
     router.push("/dashboard");
   }
 
+  async function handleGoogleSignIn() {
+    setError(null);
+    setGoogleLoading(true);
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+      setGoogleLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-white px-4">
       <div className="w-full max-w-md">
@@ -101,6 +121,22 @@ function LoginContent() {
               {error}
             </div>
           )}
+
+          <div className="space-y-4 mb-4">
+            <GoogleOAuthButton
+              onClick={handleGoogleSignIn}
+              loading={googleLoading}
+              disabled={loading || googleLoading}
+            />
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-zinc-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase tracking-wide">
+                <span className="bg-white px-2 text-zinc-500">or</span>
+              </div>
+            </div>
+          </div>
 
           <div className="space-y-4">
             <div>
@@ -152,7 +188,7 @@ function LoginContent() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || googleLoading}
               className="w-full py-3 bg-zinc-900 text-white rounded-full font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Signing in..." : "Sign in"}

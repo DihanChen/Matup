@@ -112,7 +112,7 @@ export default function Navbar() {
                 href="/dashboard"
                 className="text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors"
               >
-                My Activities
+                Dashboard
               </Link>
               <div
                 className="relative"

@@ -1,16 +1,31 @@
-// html2canvas wrapper for image generation
-import html2canvas from "html2canvas";
+type CaptureOptions = {
+  scale: number;
+  useCORS: boolean;
+  allowTaint: boolean;
+  backgroundColor: null;
+  logging: boolean;
+};
+
+const DEFAULT_CAPTURE_OPTIONS: CaptureOptions = {
+  scale: 2,
+  useCORS: true,
+  allowTaint: true,
+  backgroundColor: null,
+  logging: false,
+};
+
+async function getHtml2Canvas() {
+  const html2canvasModule = await import('html2canvas');
+  return html2canvasModule.default;
+}
 
 export async function captureElementAsImage(
   element: HTMLElement
 ): Promise<Blob | null> {
   try {
+    const html2canvas = await getHtml2Canvas();
     const canvas = await html2canvas(element, {
-      scale: 2, // Higher resolution for better quality
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: null,
-      logging: false,
+      ...DEFAULT_CAPTURE_OPTIONS,
     });
 
     return new Promise((resolve) => {
@@ -32,12 +47,9 @@ export async function captureElementAsDataURL(
   element: HTMLElement
 ): Promise<string | null> {
   try {
+    const html2canvas = await getHtml2Canvas();
     const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: null,
-      logging: false,
+      ...DEFAULT_CAPTURE_OPTIONS,
     });
 
     return canvas.toDataURL("image/png", 1.0);
