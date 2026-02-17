@@ -35,7 +35,7 @@ export default function RejectModal({
           placeholder="Reason (optional)"
           className="w-full px-4 py-2 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 resize-none"
         />
-        <div className="flex gap-3 mt-6">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 mt-6">
           <button
             onClick={onConfirm}
             disabled={submitting}

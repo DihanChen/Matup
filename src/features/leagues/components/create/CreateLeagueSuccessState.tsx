@@ -10,6 +10,15 @@ type Props = {
   onShare: () => void;
 };
 
+function formatTimeDisplay(time: string): string {
+  if (!time) return "";
+  const [hours, minutes] = time.split(":");
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes} ${ampm}`;
+}
+
 function getSportLabel(formData: LeagueCreateFormData): string {
   if (formData.sportType === "pickleball") return "Pickleball";
   if (formData.sportType === "tennis") return "Tennis";
@@ -46,6 +55,7 @@ export default function CreateLeagueSuccessState({
         year: "numeric",
       })
     : "Not set";
+  const startTimeLabel = formData.startTime ? formatTimeDisplay(formData.startTime) : "";
 
   return (
     <div className="min-h-screen bg-white">
@@ -94,7 +104,10 @@ export default function CreateLeagueSuccessState({
                 </span>
               </div>
               <div className="text-xs text-zinc-500">
-                Starts {startDateLabel} · Max {formData.maxMembers} members
+                Starts {startDateLabel}
+                {startTimeLabel ? ` at ${startTimeLabel}` : ""}
+                {" · "}
+                Max {formData.maxMembers} members
               </div>
               <div className="flex items-center justify-between pt-1">
                 <div className="text-xs text-zinc-500">Ready for players</div>

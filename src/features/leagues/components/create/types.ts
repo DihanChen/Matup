@@ -5,6 +5,7 @@ export interface LeagueCreateFormData {
   scoringFormat: "singles" | "doubles" | "individual_time" | "";
   runningComparisonMode: "personal_progress" | "absolute_performance";
   startDate: string;
+  startTime: string;
   seasonWeeks: number;
   name: string;
   description: string;

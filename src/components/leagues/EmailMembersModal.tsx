@@ -82,7 +82,7 @@ export default function EmailMembersModal({
         {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
         {success && <p className="text-sm text-emerald-600 mt-3">{success}</p>}
 
-        <div className="flex gap-3 mt-6">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 mt-6">
           <button
             onClick={onSend}
             disabled={sending}

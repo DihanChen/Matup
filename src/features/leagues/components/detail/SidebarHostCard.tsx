@@ -23,7 +23,7 @@ export default function SidebarHostCard({ data }: Props) {
   return (
     <div className="bg-zinc-50 rounded-3xl border border-zinc-200 p-5">
       <h2 className="text-xs font-semibold tracking-wide uppercase text-zinc-500 mb-3">Hosted by</h2>
-      <Link href={`/users/${ownerMember.user_id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+      <Link href={`/users/${ownerMember.user_id}`} className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity">
         {ownerMember.avatar_url ? (
           <Image
             src={ownerMember.avatar_url}
@@ -37,8 +37,8 @@ export default function SidebarHostCard({ data }: Props) {
             {getInitials(ownerMember.name)}
           </div>
         )}
-        <div>
-          <p className="font-semibold text-zinc-900">{ownerMember.name || "League Owner"}</p>
+        <div className="min-w-0">
+          <p className="font-semibold text-zinc-900 truncate">{ownerMember.name || "League Owner"}</p>
           <p className="text-xs text-zinc-500 capitalize">{ownerMember.role}</p>
         </div>
       </Link>

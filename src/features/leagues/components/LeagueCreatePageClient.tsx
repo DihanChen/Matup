@@ -40,6 +40,7 @@ export default function CreateLeaguePage() {
     scoringFormat: "",
     runningComparisonMode: "personal_progress",
     startDate: "",
+    startTime: "",
     seasonWeeks: 10,
     name: "",
     description: "",
@@ -109,7 +110,7 @@ export default function CreateLeaguePage() {
         }
         return true;
       case 2:
-        return !!formData.startDate;
+        return !!formData.startDate && !!formData.startTime;
       case 3:
         return !!formData.name.trim();
       case 4:
@@ -181,6 +182,7 @@ export default function CreateLeaguePage() {
       rotationType: formData.rotationType,
       runningComparisonMode: formData.runningComparisonMode,
       startDate: formData.startDate,
+      startTime: formData.startTime,
       seasonWeeks: formData.seasonWeeks,
     });
 

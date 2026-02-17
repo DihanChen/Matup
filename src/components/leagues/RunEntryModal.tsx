@@ -69,7 +69,7 @@ export default function RunEntryModal({
             />
           </div>
         </div>
-        <div className="flex gap-3 mt-6">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 mt-6">
           <button
             onClick={onSubmit}
             disabled={submitting}

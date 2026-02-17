@@ -1,5 +1,6 @@
 "use client";
 
+import { QUICK_TIMES } from "@/features/events/components/create/constants";
 import type { LeagueCreateFormData } from "@/features/leagues/components/create/types";
 
 type Props = {
@@ -28,6 +29,33 @@ export default function ScheduleStep({ formData, onUpdateFormData }: Props) {
             onChange={(e) => onUpdateFormData({ startDate: e.target.value })}
             className="w-full px-4 py-3 border border-zinc-200 rounded-2xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
           />
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <svg className="w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            <span className="text-sm font-bold text-zinc-900">Start Time</span>
+          </div>
+          <div className="overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
+            <div className="flex gap-2 w-max">
+              {QUICK_TIMES.map((time) => (
+                <button
+                  key={time.value}
+                  type="button"
+                  onClick={() => onUpdateFormData({ startTime: time.value })}
+                  className={`flex-shrink-0 py-2 px-4 rounded-full text-xs sm:text-sm font-medium transition-all ${
+                    formData.startTime === time.value
+                      ? "bg-zinc-900 text-white"
+                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                  }`}
+                >
+                  {time.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div>

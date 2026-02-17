@@ -39,24 +39,18 @@ function generateDateOptions() {
 
 export const DATE_OPTIONS = generateDateOptions();
 
-export const QUICK_TIMES = [
-  { value: "06:00", label: "06:00 AM" },
-  { value: "07:00", label: "07:00 AM" },
-  { value: "08:00", label: "08:00 AM" },
-  { value: "09:00", label: "09:00 AM" },
-  { value: "10:00", label: "10:00 AM" },
-  { value: "11:00", label: "11:00 AM" },
-  { value: "12:00", label: "12:00 PM" },
-  { value: "13:00", label: "01:00 PM" },
-  { value: "14:00", label: "02:00 PM" },
-  { value: "15:00", label: "03:00 PM" },
-  { value: "16:00", label: "04:00 PM" },
-  { value: "17:00", label: "05:00 PM" },
-  { value: "18:00", label: "06:00 PM" },
-  { value: "19:00", label: "07:00 PM" },
-  { value: "20:00", label: "08:00 PM" },
-  { value: "21:00", label: "09:00 PM" },
-];
+function generateQuickTimes() {
+  const times: Array<{ value: string; label: string }> = [];
+  for (let hour = 6; hour <= 21; hour += 1) {
+    for (const minute of [0, 30]) {
+      const value = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+      times.push({ value, label: formatTimeDisplay(value) });
+    }
+  }
+  return times;
+}
+
+export const QUICK_TIMES = generateQuickTimes();
 
 export function getCoverSrcForSport(sportType: string): string {
   if (sportType === "pickleball") return "/covers/tennis.jpg";

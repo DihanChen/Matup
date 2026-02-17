@@ -151,7 +151,7 @@ export default function SportAndFormatStep({ formData, onUpdateFormData }: Props
               <ActivityIcon id={formData.sportType} className="w-4 h-4 text-zinc-500" />
               <span className="text-sm font-bold text-zinc-900">Match Type</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 type="button"
                 onClick={() => onUpdateFormData({ matchType: "singles", rotationType: "" })}
@@ -205,7 +205,7 @@ export default function SportAndFormatStep({ formData, onUpdateFormData }: Props
                 </svg>
                 <span className="text-sm font-bold text-zinc-900">Rotation Type</span>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => onUpdateFormData({ rotationType: "random" })}

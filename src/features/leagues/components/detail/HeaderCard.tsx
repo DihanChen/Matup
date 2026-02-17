@@ -57,14 +57,14 @@ export default function HeaderCard({ data }: Props) {
         </div>
       </div>
 
-      <div className="p-5 sm:p-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 mb-2">{league.name}</h1>
+      <div className="p-4 sm:p-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 mb-2 break-words">{league.name}</h1>
         <p className="text-sm text-zinc-600 leading-relaxed">
           {league.description || "Competitive season play with structured matches, standings, and weekly momentum."}
         </p>
         {ownerCanToggleToParticipantView && (
           <div className="mt-4">
-            <div className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 p-1">
+            <div className="inline-flex max-w-full flex-wrap items-center rounded-full border border-zinc-200 bg-zinc-50 p-1">
               <button
                 type="button"
                 onClick={() => onOwnerViewModeChange("owner")}
@@ -98,7 +98,7 @@ export default function HeaderCard({ data }: Props) {
           </div>
           <div className="rounded-2xl bg-zinc-50 border border-zinc-100 px-3 py-2">
             <div className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium">Format</div>
-            <div className="text-sm font-semibold text-zinc-900">{FORMAT_LABELS[league.scoring_format]}</div>
+            <div className="text-sm font-semibold text-zinc-900 break-words">{FORMAT_LABELS[league.scoring_format]}</div>
           </div>
           <div className="rounded-2xl bg-zinc-50 border border-zinc-100 px-3 py-2">
             <div className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium">Season</div>

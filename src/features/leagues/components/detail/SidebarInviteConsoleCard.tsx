@@ -23,7 +23,7 @@ export default function SidebarInviteConsoleCard({ data }: Props) {
     <div className="bg-white rounded-3xl border border-zinc-200 p-5 space-y-4">
       <h2 className="text-sm font-semibold text-zinc-900">Invite Console</h2>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <div className="flex-1 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-semibold text-zinc-900 tracking-wide">
           {inviteCode ? (
             inviteCode

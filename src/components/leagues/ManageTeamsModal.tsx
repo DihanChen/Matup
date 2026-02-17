@@ -78,7 +78,7 @@ export default function ManageTeamsModal({
 
         <div className="space-y-3">
           {drafts.map((draft, index) => (
-            <div key={`assigned-team-${index}`} className="grid grid-cols-[1fr_auto_1fr_auto] gap-2 items-center">
+            <div key={`assigned-team-${index}`} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr_auto] gap-2 items-center">
               <select
                 value={draft.playerAId}
                 onChange={(event) => onUpdateDraft(index, "playerAId", event.target.value)}
@@ -95,7 +95,7 @@ export default function ManageTeamsModal({
                   </option>
                 ))}
               </select>
-              <span className="text-xs text-zinc-400">+</span>
+              <span className="text-xs text-zinc-400 text-center">+</span>
               <select
                 value={draft.playerBId}
                 onChange={(event) => onUpdateDraft(index, "playerBId", event.target.value)}
@@ -135,7 +135,7 @@ export default function ManageTeamsModal({
 
         {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
 
-        <div className="flex gap-3 mt-6">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 mt-6">
           <button
             onClick={onSave}
             disabled={saving}

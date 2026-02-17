@@ -161,7 +161,7 @@ export default function RecordResultsPageClient() {
 
           {league.scoring_format === "team_vs_team" && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 mb-2">Week Number</label>
                   <input
@@ -189,14 +189,14 @@ export default function RecordResultsPageClient() {
                   {members.map((member) => {
                     const team = getTeam(member.user_id);
                     return (
-                      <div key={member.user_id} className="flex items-center gap-3 p-3 bg-zinc-50 rounded-xl">
+                      <div key={member.user_id} className="flex flex-wrap sm:flex-nowrap items-center gap-3 p-3 bg-zinc-50 rounded-xl">
                         {member.avatar_url ? (
                           <Image src={member.avatar_url} alt={member.name || "Member"} width={36} height={36} className="w-9 h-9 rounded-full object-cover" />
                         ) : (
                           <div className="w-9 h-9 rounded-full bg-orange-500 text-white flex items-center justify-center font-medium text-sm">{getInitials(member.name)}</div>
                         )}
-                        <span className="flex-1 font-medium text-zinc-900 text-sm">{member.name || "Anonymous"}</span>
-                        <div className="flex gap-2">
+                        <span className="flex-1 min-w-[140px] font-medium text-zinc-900 text-sm">{member.name || "Anonymous"}</span>
+                        <div className="w-full sm:w-auto flex gap-2 sm:justify-end">
                           <button type="button" onClick={() => assignTeam(member.user_id, "A")} className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${team === "A" ? "bg-blue-500 text-white" : "bg-zinc-200 text-zinc-600 hover:bg-zinc-300"}`}>Team A</button>
                           <button type="button" onClick={() => assignTeam(member.user_id, "B")} className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${team === "B" ? "bg-red-500 text-white" : "bg-zinc-200 text-zinc-600 hover:bg-zinc-300"}`}>Team B</button>
                         </div>
@@ -205,7 +205,7 @@ export default function RecordResultsPageClient() {
                   })}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-blue-700 mb-2">Team A Score</label>
                   <input type="number" value={scoreA} onChange={(e) => setScoreA(e.target.value)} min="0" placeholder="0" className="w-full px-4 py-3 border border-blue-300 rounded-xl bg-blue-50 text-zinc-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-center text-xl font-bold" />
@@ -220,7 +220,7 @@ export default function RecordResultsPageClient() {
 
           {league.scoring_format === "individual_time" && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 mb-2">Week Number</label>
                   <input type="number" value={weekNumber} onChange={(e) => setWeekNumber(e.target.value)} placeholder="Optional" min="1" className="w-full px-4 py-3 border border-zinc-300 rounded-xl bg-white text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all" />
@@ -237,7 +237,7 @@ export default function RecordResultsPageClient() {
                   const entry = timeEntries.find((t) => t.user_id === member.user_id);
                   return (
                     <div key={member.user_id} className={`p-3 rounded-xl transition-all ${isSelected ? "bg-orange-50 border border-orange-200" : "bg-zinc-50"}`}>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
                         <button type="button" onClick={() => toggleTimeMember(member.user_id)} className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${isSelected ? "bg-orange-500 border-orange-500" : "border-zinc-300"}`}>
                           {isSelected && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
                         </button>
@@ -246,9 +246,9 @@ export default function RecordResultsPageClient() {
                         ) : (
                           <div className="w-9 h-9 rounded-full bg-orange-500 text-white flex items-center justify-center font-medium text-sm">{getInitials(member.name)}</div>
                         )}
-                        <span className="flex-1 font-medium text-zinc-900 text-sm">{member.name || "Anonymous"}</span>
+                        <span className="flex-1 min-w-[140px] font-medium text-zinc-900 text-sm">{member.name || "Anonymous"}</span>
                         {isSelected && entry && (
-                          <div className="flex items-center gap-1">
+                          <div className="w-full sm:w-auto flex items-center gap-1 sm:justify-end">
                             <input type="number" value={entry.minutes} onChange={(e) => updateTimeEntry(member.user_id, "minutes", e.target.value)} min="0" placeholder="mm" className="w-16 px-2 py-1.5 border border-zinc-300 rounded-lg text-center text-sm" />
                             <span className="text-zinc-500 font-bold">:</span>
                             <input type="number" value={entry.seconds} onChange={(e) => updateTimeEntry(member.user_id, "seconds", e.target.value)} min="0" max="59" placeholder="ss" className="w-16 px-2 py-1.5 border border-zinc-300 rounded-lg text-center text-sm" />
@@ -264,7 +264,7 @@ export default function RecordResultsPageClient() {
 
           {league.scoring_format === "individual_points" && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 mb-2">Week Number</label>
                   <input type="number" value={weekNumber} onChange={(e) => setWeekNumber(e.target.value)} placeholder="Optional" min="1" className="w-full px-4 py-3 border border-zinc-300 rounded-xl bg-white text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all" />
@@ -281,7 +281,7 @@ export default function RecordResultsPageClient() {
                   const entry = pointsEntries.find((t) => t.user_id === member.user_id);
                   return (
                     <div key={member.user_id} className={`p-3 rounded-xl transition-all ${isSelected ? "bg-orange-50 border border-orange-200" : "bg-zinc-50"}`}>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
                         <button type="button" onClick={() => togglePointsMember(member.user_id)} className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${isSelected ? "bg-orange-500 border-orange-500" : "border-zinc-300"}`}>
                           {isSelected && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>}
                         </button>
@@ -290,9 +290,9 @@ export default function RecordResultsPageClient() {
                         ) : (
                           <div className="w-9 h-9 rounded-full bg-orange-500 text-white flex items-center justify-center font-medium text-sm">{getInitials(member.name)}</div>
                         )}
-                        <span className="flex-1 font-medium text-zinc-900 text-sm">{member.name || "Anonymous"}</span>
+                        <span className="flex-1 min-w-[140px] font-medium text-zinc-900 text-sm">{member.name || "Anonymous"}</span>
                         {isSelected && entry && (
-                          <input type="number" value={entry.points} onChange={(e) => updatePointsEntry(member.user_id, e.target.value)} min="0" placeholder="Pts" className="w-20 px-2 py-1.5 border border-zinc-300 rounded-lg text-center text-sm" />
+                          <input type="number" value={entry.points} onChange={(e) => updatePointsEntry(member.user_id, e.target.value)} min="0" placeholder="Pts" className="w-full sm:w-20 px-2 py-1.5 border border-zinc-300 rounded-lg text-center text-sm" />
                         )}
                       </div>
                     </div>

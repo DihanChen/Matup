@@ -26,7 +26,7 @@ export default function PendingReviewsCard({ data }: Props) {
         hasUpcomingMatches ? "md:col-span-4" : "md:col-span-12"
       } ${
         isParticipantView ? "order-3" : ""
-      } bg-white rounded-2xl border border-zinc-200 p-6`}
+      } bg-white rounded-2xl border border-zinc-200 p-4 sm:p-6`}
     >
       <div className="flex items-center justify-between mb-4 gap-2">
         <h2 className="text-lg font-semibold text-zinc-900">
@@ -53,7 +53,7 @@ export default function PendingReviewsCard({ data }: Props) {
                 <StatusBadge status="awaiting_confirmation" label="Awaiting Confirmation" />
               </div>
               {teamA.length > 0 && teamB.length > 0 && (
-                <div className="text-sm text-zinc-500">{sideANames} vs {sideBNames}</div>
+                <div className="text-sm text-zinc-500 break-words">{sideANames} vs {sideBNames}</div>
               )}
               {match.match_date && (
                 <div className="text-xs text-zinc-400 mt-1">

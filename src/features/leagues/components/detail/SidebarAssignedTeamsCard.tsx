@@ -51,7 +51,7 @@ export default function SidebarAssignedTeamsCard({ data }: Props) {
       )}
 
       {unpairedAssignedMemberIds.length > 0 && (
-        <div className="mt-3 text-xs text-zinc-500">
+        <div className="mt-3 text-xs text-zinc-500 break-words">
           Unpaired: {unpairedAssignedMemberIds.map((memberId) => getMemberNameById(memberId)).join(", ")}
         </div>
       )}

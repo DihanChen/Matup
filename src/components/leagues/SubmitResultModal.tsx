@@ -281,7 +281,7 @@ export default function SubmitResultModal({
             </div>
             <div>
               <p className="text-sm text-zinc-600 mb-3">Award win to</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                   type="button"
                   onClick={() => setWinner("A")}
@@ -310,7 +310,7 @@ export default function SubmitResultModal({
         ) : scoreMode === "simple" ? (
           <div>
             <p className="text-sm text-zinc-600 mb-3">Select winner</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 type="button"
                 onClick={() => setWinner("A")}
@@ -414,7 +414,7 @@ export default function SubmitResultModal({
 
         {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
 
-        <div className="flex gap-3 mt-6">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 mt-6">
           <button
             onClick={handleSubmit}
             disabled={submitting}

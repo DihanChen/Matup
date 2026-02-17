@@ -174,22 +174,22 @@ export default function LeaguesPage() {
             </h1>
             <p className="text-zinc-500">Simple view of all your leagues in one place.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/leagues/join"
-              className="px-4 py-2.5 border border-zinc-200 text-zinc-700 rounded-full text-sm font-medium hover:bg-zinc-50 transition-colors"
+              className="flex-1 sm:flex-none text-center px-4 py-2.5 border border-zinc-200 text-zinc-700 rounded-full text-sm font-medium hover:bg-zinc-50 transition-colors"
             >
               Join by Code
             </Link>
             {isPremium ? (
               <Link
                 href="/leagues/create"
-                className="px-4 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors"
+                className="flex-1 sm:flex-none text-center px-4 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors"
               >
                 Create League
               </Link>
             ) : (
-              <div className="px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-full text-sm font-medium text-amber-700">
+              <div className="w-full sm:w-auto text-center px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-full text-sm font-medium text-amber-700">
                 Premium Required
               </div>
             )}

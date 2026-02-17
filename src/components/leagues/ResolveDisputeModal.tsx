@@ -34,7 +34,7 @@ export default function ResolveDisputeModal({
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-zinc-700 mb-1.5">Winner Side</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => onWinnerChange("A")}
@@ -70,7 +70,7 @@ export default function ResolveDisputeModal({
             />
           </div>
         </div>
-        <div className="flex gap-3 mt-6">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 mt-6">
           <button
             onClick={onResolve}
             disabled={resolving}

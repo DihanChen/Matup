@@ -24,7 +24,7 @@ export default function RecentResultsCard({ data }: Props) {
         isParticipantView ? "order-4" : ""
       } ${recentResultsSpanClass} bg-white rounded-2xl border border-zinc-200 overflow-hidden`}
     >
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="mb-5">
           <h2 className="text-lg font-semibold text-zinc-900">
             {isParticipantView ? "Your Recent Results" : "Recent Results"}

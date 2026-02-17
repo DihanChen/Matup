@@ -161,7 +161,7 @@ export default function UpcomingMatchesCard({ data }: Props) {
             <StatusBadge status={item.statusKey} label={item.statusLabel} />
           </div>
           {item.sideANames && item.sideBNames && (
-            <div className="text-sm text-zinc-500">
+            <div className="text-sm text-zinc-500 break-words">
               {item.sideANames} vs {item.sideBNames}
             </div>
           )}
@@ -225,7 +225,7 @@ export default function UpcomingMatchesCard({ data }: Props) {
     <div
       className={`${
         isParticipantView ? "order-1" : ""
-      } ${upcomingMatchesSpanClass} bg-white rounded-2xl border border-zinc-200 p-6`}
+      } ${upcomingMatchesSpanClass} bg-white rounded-2xl border border-zinc-200 p-4 sm:p-6`}
     >
       <div className="flex items-center justify-between mb-4 gap-2">
         <h2 className="text-lg font-semibold text-zinc-900">

@@ -92,7 +92,7 @@ export default function RecordResultsTennisSection({
                   <div className="text-sm font-medium text-zinc-900">
                     Week {match.week_number}
                   </div>
-                  <div className="text-xs text-zinc-500 mt-1">
+                  <div className="text-xs text-zinc-500 mt-1 break-words">
                     {teamA.map((p) => p.name || "?").join(" & ")} vs{" "}
                     {teamB.map((p) => p.name || "?").join(" & ")}
                   </div>
@@ -124,7 +124,7 @@ export default function RecordResultsTennisSection({
           </label>
 
           {!isAdHoc && selectedMatch && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="p-4 bg-blue-50 rounded-xl">
                 <div className="text-xs font-medium text-blue-700 mb-2">Side A</div>
                 {selectedMatch.participants
@@ -156,7 +156,7 @@ export default function RecordResultsTennisSection({
                 return (
                   <div
                     key={member.user_id}
-                    className="flex items-center gap-3 p-3 bg-zinc-50 rounded-xl"
+                    className="flex flex-wrap sm:flex-nowrap items-center gap-3 p-3 bg-zinc-50 rounded-xl"
                   >
                     {member.avatar_url ? (
                       <Image
@@ -171,10 +171,10 @@ export default function RecordResultsTennisSection({
                         {getInitials(member.name)}
                       </div>
                     )}
-                    <span className="flex-1 font-medium text-zinc-900 text-sm">
+                    <span className="flex-1 min-w-[140px] font-medium text-zinc-900 text-sm">
                       {member.name || "Anonymous"}
                     </span>
-                    <div className="flex gap-2">
+                    <div className="w-full sm:w-auto flex gap-2 sm:justify-end">
                       <button
                         type="button"
                         onClick={() => onToggleAdHocPlayer(member.user_id, "A")}
@@ -201,7 +201,7 @@ export default function RecordResultsTennisSection({
                   </div>
                 );
               })}
-              <div className="grid grid-cols-2 gap-4 mt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 mb-2">
                     Week Number
@@ -265,7 +265,7 @@ export default function RecordResultsTennisSection({
           </div>
 
           {scoreMode === "simple" ? (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 type="button"
                 onClick={() => onWinnerChange("A")}
@@ -276,7 +276,7 @@ export default function RecordResultsTennisSection({
                 }`}
               >
                 <div className="text-sm font-medium text-blue-700 mb-1">Side A Wins</div>
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-zinc-500 break-words">
                   {matchTeamA.map((id) => getMemberName(id)).join(" & ")}
                 </div>
               </button>
@@ -290,7 +290,7 @@ export default function RecordResultsTennisSection({
                 }`}
               >
                 <div className="text-sm font-medium text-red-700 mb-1">Side B Wins</div>
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-zinc-500 break-words">
                   {matchTeamB.map((id) => getMemberName(id)).join(" & ")}
                 </div>
               </button>

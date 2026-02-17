@@ -24,7 +24,7 @@ export default function StandingsCard({ data }: Props) {
     <div
       className={`${
         hasRecentResults ? "md:col-span-7" : "md:col-span-12"
-      } bg-white rounded-2xl border border-zinc-200 p-6`}
+      } bg-white rounded-2xl border border-zinc-200 p-4 sm:p-6`}
     >
       <h2 className="text-lg font-semibold text-zinc-900 mb-4">
         {isDoubles ? "Team Standings" : "Standings"}
@@ -32,7 +32,7 @@ export default function StandingsCard({ data }: Props) {
 
       {isDoubles && teamStandings.length > 0 ? (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-zinc-200">
                 <th className="text-left py-2 px-2 text-zinc-500 font-medium">#</th>
@@ -61,7 +61,7 @@ export default function StandingsCard({ data }: Props) {
 
       {(!isDoubles || teamStandings.length === 0) && standings.length > 0 ? (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-zinc-200">
                 <th className="text-left py-2 px-2 text-zinc-500 font-medium">#</th>
@@ -147,7 +147,7 @@ export default function StandingsCard({ data }: Props) {
         <div className="mt-6 pt-6 border-t border-zinc-200">
           <h3 className="text-sm font-medium text-zinc-500 mb-3">Individual Records</h3>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-zinc-200">
                   <th className="text-left py-2 px-2 text-zinc-500 font-medium">#</th>

@@ -14,6 +14,7 @@ type TennisRules = {
   schedule: {
     cadence: "weekly";
     starts_on: string | null;
+    starts_at_local: string | null;
     season_weeks: number;
   };
   match: {
@@ -43,6 +44,7 @@ type RunningRules = {
   schedule: {
     cadence: "weekly";
     starts_on: string | null;
+    starts_at_local: string | null;
     season_weeks: number;
   };
   sessions: {
@@ -69,6 +71,7 @@ type PickleballRules = {
   schedule: {
     cadence: "weekly";
     starts_on: string | null;
+    starts_at_local: string | null;
     season_weeks: number;
   };
   match: {
@@ -103,6 +106,7 @@ type BuildLeagueRulesParams = {
   rotationType: LeagueRotationType;
   runningComparisonMode: 'personal_progress' | 'absolute_performance';
   startDate: string;
+  startTime: string;
   seasonWeeks: number;
 };
 
@@ -119,6 +123,7 @@ export function buildLeagueRules({
   rotationType,
   runningComparisonMode,
   startDate,
+  startTime,
   seasonWeeks,
 }: BuildLeagueRulesParams): LeagueRules {
   if (sportType === "running") {
@@ -127,6 +132,7 @@ export function buildLeagueRules({
       schedule: {
         cadence: "weekly",
         starts_on: startDate || null,
+        starts_at_local: startTime || null,
         season_weeks: seasonWeeks,
       },
       sessions: {
@@ -163,6 +169,7 @@ export function buildLeagueRules({
       schedule: {
         cadence: "weekly",
         starts_on: startDate || null,
+        starts_at_local: startTime || null,
         season_weeks: seasonWeeks,
       },
       match: {
@@ -195,6 +202,7 @@ export function buildLeagueRules({
     schedule: {
       cadence: "weekly",
       starts_on: startDate || null,
+      starts_at_local: startTime || null,
       season_weeks: seasonWeeks,
     },
     match: {

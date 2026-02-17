@@ -31,7 +31,7 @@ export default function RunningSessionsCard({ data }: Props) {
     <div
       className={`${
         isParticipantView ? "order-2" : ""
-      } md:col-span-12 bg-white rounded-2xl border border-zinc-200 p-6`}
+      } md:col-span-12 bg-white rounded-2xl border border-zinc-200 p-4 sm:p-6`}
     >
       <div className="flex items-center justify-between gap-2 mb-4">
         <h2 className="text-lg font-semibold text-zinc-900">Running Sessions</h2>

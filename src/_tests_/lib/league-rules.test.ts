@@ -9,11 +9,13 @@ test("buildLeagueRules builds running defaults with normalized schedule values",
     rotationType: "",
     runningComparisonMode: "absolute_performance",
     startDate: "",
+    startTime: "",
     seasonWeeks: 1,
   });
 
   assert.equal(rules.sport, "running");
   assert.equal(rules.schedule.starts_on, null);
+  assert.equal(rules.schedule.starts_at_local, null);
   assert.equal(rules.standings.best_n_weeks, 1);
   assert.equal(rules.standings.min_sessions_for_ranking, 1);
   assert.equal(rules.sessions.comparison_mode, "absolute_performance");
@@ -26,6 +28,7 @@ test("buildLeagueRules builds tennis assigned doubles with fixed pairs enabled",
     rotationType: "assigned",
     runningComparisonMode: "personal_progress",
     startDate: "2026-03-01",
+    startTime: "18:30",
     seasonWeeks: 8,
   });
 
@@ -33,6 +36,7 @@ test("buildLeagueRules builds tennis assigned doubles with fixed pairs enabled",
   assert.equal(rules.match.mode, "doubles");
   assert.equal(rules.match.doubles_partner_mode, "fixed_pairs");
   assert.deepEqual(rules.match.fixed_pairs, []);
+  assert.equal(rules.schedule.starts_at_local, "18:30");
 });
 
 test("buildLeagueRules builds pickleball singles with no fixed pairs", () => {
@@ -42,6 +46,7 @@ test("buildLeagueRules builds pickleball singles with no fixed pairs", () => {
     rotationType: "random",
     runningComparisonMode: "personal_progress",
     startDate: "2026-03-01",
+    startTime: "07:30",
     seasonWeeks: 6,
   });
 

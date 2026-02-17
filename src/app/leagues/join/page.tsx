@@ -228,11 +228,11 @@ function JoinLeagueContent() {
             Join <span className="text-orange-500">League</span>
           </h1>
           <p className="text-zinc-500 mb-6">You need an account to join this league.</p>
-          <div className="flex gap-3 justify-center">
-            <Link href="/login" className="px-5 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/login" className="px-5 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors text-center">
               Log In
             </Link>
-            <Link href="/signup" className="px-5 py-2.5 border border-zinc-200 text-zinc-700 rounded-full text-sm font-medium hover:bg-zinc-50 transition-colors">
+            <Link href="/signup" className="px-5 py-2.5 border border-zinc-200 text-zinc-700 rounded-full text-sm font-medium hover:bg-zinc-50 transition-colors text-center">
               Create Account
             </Link>
           </div>

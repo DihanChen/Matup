@@ -239,20 +239,20 @@ export default function LeagueDetailPageClient() {
       if (setScores && setScores.sets && setScores.sets.length > 0) {
         return (
           <div className="text-sm">
-            <div className="flex items-center gap-2">
-              <span className={`font-medium ${match.winner === "A" ? "text-orange-500" : "text-zinc-900"}`}>{sideANames}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`font-medium break-words ${match.winner === "A" ? "text-orange-500" : "text-zinc-900"}`}>{sideANames}</span>
               <span className="text-zinc-400">vs</span>
-              <span className={`font-medium ${match.winner === "B" ? "text-orange-500" : "text-zinc-900"}`}>{sideBNames}</span>
+              <span className={`font-medium break-words ${match.winner === "B" ? "text-orange-500" : "text-zinc-900"}`}>{sideBNames}</span>
             </div>
             <div className="text-xs text-zinc-500 mt-1">{setScores.sets.map((s) => `${s[0]}-${s[1]}`).join(", ")}</div>
           </div>
         );
       }
       return (
-        <div className="text-sm flex items-center gap-2">
-          <span className={`font-medium ${match.winner === "A" ? "text-orange-500" : "text-zinc-900"}`}>{sideANames}</span>
+        <div className="text-sm flex flex-wrap items-center gap-2">
+          <span className={`font-medium break-words ${match.winner === "A" ? "text-orange-500" : "text-zinc-900"}`}>{sideANames}</span>
           <span className="text-zinc-400">vs</span>
-          <span className={`font-medium ${match.winner === "B" ? "text-orange-500" : "text-zinc-900"}`}>{sideBNames}</span>
+          <span className={`font-medium break-words ${match.winner === "B" ? "text-orange-500" : "text-zinc-900"}`}>{sideBNames}</span>
         </div>
       );
     }
@@ -260,7 +260,7 @@ export default function LeagueDetailPageClient() {
       const teamA = match.participants.filter((p) => p.team === "A");
       const teamB = match.participants.filter((p) => p.team === "B");
       return (
-        <div className="text-sm">
+        <div className="text-sm break-words">
           <span className="font-medium text-zinc-900">Team A ({teamA.map((p) => p.name || "?").join(", ")})</span>
           <span className="mx-2 font-bold text-orange-500">{teamA[0]?.score ?? 0} - {teamB[0]?.score ?? 0}</span>
           <span className="font-medium text-zinc-900">Team B ({teamB.map((p) => p.name || "?").join(", ")})</span>
