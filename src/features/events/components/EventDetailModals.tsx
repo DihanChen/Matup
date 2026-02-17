@@ -45,7 +45,7 @@ type Props = {
   onReviewCommentChange: (value: string) => void;
   onSubmitReview: () => void;
   onCloseShareModal: () => void;
-  onShareImage: () => void;
+  onShareImage: (templateRef: HTMLElement | null, eventTitle: string) => Promise<boolean>;
   formattedDate: string;
   formattedTime: string;
 };

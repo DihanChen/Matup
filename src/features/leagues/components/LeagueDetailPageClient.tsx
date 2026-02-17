@@ -226,9 +226,10 @@ export default function LeagueDetailPageClient() {
 
   const sportDisplayName =
     league.sport_type.charAt(0).toUpperCase() + league.sport_type.slice(1);
+  const scoringFormat = league.scoring_format;
 
   function formatMatchResult(match: LeagueMatch) {
-    const fmt = league.scoring_format;
+    const fmt = scoringFormat;
     if (fmt === "singles" || fmt === "doubles") {
       const teamA = match.participants.filter((p) => p.team === "A");
       const teamB = match.participants.filter((p) => p.team === "B");
