@@ -30,6 +30,13 @@ export type EventWithMetadata = EventRow & {
   creator_name: string;
 };
 
+type EventBounds = {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+};
+
 export async function getCurrentUserId(
   supabase: SupabaseClient
 ): Promise<string | null> {
@@ -41,7 +48,8 @@ export async function getCurrentUserId(
 
 export async function getUpcomingEventsWithMetadata(
   supabase: SupabaseClient,
-  sportFilter: string
+  sportFilter: string,
+  bounds?: EventBounds | null
 ): Promise<EventWithMetadata[]> {
   let query = supabase
     .from("events")
@@ -51,6 +59,16 @@ export async function getUpcomingEventsWithMetadata(
 
   if (sportFilter) {
     query = query.eq("sport_type", sportFilter);
+  }
+
+  if (bounds) {
+    query = query
+      .not("latitude", "is", null)
+      .not("longitude", "is", null)
+      .gte("latitude", bounds.south)
+      .lte("latitude", bounds.north)
+      .gte("longitude", bounds.west)
+      .lte("longitude", bounds.east);
   }
 
   const { data: eventsData, error } = await query;

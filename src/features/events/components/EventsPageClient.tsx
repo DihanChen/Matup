@@ -311,9 +311,18 @@ function EventsContent() {
     setLocationStatus("loading");
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+        const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+        setUserLocation(location);
         setLocationStatus("success");
         setSortByDistance(true);
+        hasAutoInitialAreaSearch.current = true;
+        const nearMeBounds = buildNearMeBounds(location);
+        setSearchedBounds((previous) => {
+          if (previous && areBoundsEqual(previous, nearMeBounds)) {
+            return previous;
+          }
+          return nearMeBounds;
+        });
       },
       () => {
         setLocationStatus("error");
@@ -334,8 +343,12 @@ function EventsContent() {
         setCurrentUserId(userId);
       }
 
+      const eventsPromise = searchedBounds
+        ? getUpcomingEventsWithMetadata(supabase, sportFilter, searchedBounds)
+        : Promise.resolve<EventWithMetadata[]>([]);
+
       const [eventsData, courtsData]: [EventWithMetadata[], Court[]] = await Promise.all([
-        getUpcomingEventsWithMetadata(supabase, sportFilter),
+        eventsPromise,
         getApprovedCourts(supabase, sportFilter),
       ]);
 
@@ -353,7 +366,7 @@ function EventsContent() {
     return () => {
       isCancelled = true;
     };
-  }, [sportFilter]);
+  }, [searchedBounds, sportFilter]);
 
   useEffect(() => {
     if (hasAttemptedAutoLocation.current) return;
@@ -367,9 +380,18 @@ function EventsContent() {
     window.setTimeout(() => setLocationStatus("loading"), 0);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+        const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+        setUserLocation(location);
         setLocationStatus("success");
         setSortByDistance(true);
+        hasAutoInitialAreaSearch.current = true;
+        const nearMeBounds = buildNearMeBounds(location);
+        setSearchedBounds((previous) => {
+          if (previous && areBoundsEqual(previous, nearMeBounds)) {
+            return previous;
+          }
+          return nearMeBounds;
+        });
       },
       () => {
         setLocationStatus("error");
