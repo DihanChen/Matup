@@ -21,13 +21,42 @@ type FriendEntry = {
   };
 };
 
+type SearchUser = {
+  id: string;
+  name: string | null;
+  avatar_url: string | null;
+};
+
+type RelationshipStatus = "none" | "friends" | "sent" | "received";
+
 export function useFriendsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [friends, setFriends] = useState<FriendEntry[]>([]);
   const [receivedRequests, setReceivedRequests] = useState<FriendEntry[]>([]);
   const [sentRequests, setSentRequests] = useState<FriendEntry[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [searchQuery, setSearchQueryState] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchNotice, setSearchNotice] = useState<string | null>(null);
+
+  function setSearchQuery(value: string) {
+    setSearchQueryState(value);
+    const normalized = value.trim();
+    if (normalized.length < 2) {
+      setSearchResults([]);
+      setSearching(false);
+      setSearchError(null);
+      return;
+    }
+
+    setSearching(true);
+    setSearchError(null);
+    setSearchNotice(null);
+  }
 
   useEffect(() => {
     async function fetchData() {
@@ -41,6 +70,7 @@ export function useFriendsPage() {
         router.push("/login");
         return;
       }
+      setCurrentUserId(user.id);
 
       // Get all friendships involving this user
       const { data: friendshipsData } = await supabase
@@ -103,6 +133,49 @@ export function useFriendsPage() {
 
     fetchData();
   }, [router]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const query = searchQuery.trim();
+    if (query.length < 2) return;
+
+    let cancelled = false;
+
+    const timeoutId = window.setTimeout(async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, name, avatar_url")
+        .ilike("name", `%${query}%`)
+        .neq("id", currentUserId)
+        .limit(12);
+
+      if (cancelled) return;
+
+      if (error) {
+        setSearchError(error.message);
+        setSearchResults([]);
+        setSearching(false);
+        return;
+      }
+
+      setSearchResults((data || []) as SearchUser[]);
+      setSearching(false);
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [currentUserId, searchQuery]);
+
+  function getRelationshipStatus(userId: string): RelationshipStatus {
+    if (friends.some((entry) => entry.user.id === userId)) return "friends";
+    if (sentRequests.some((entry) => entry.user.id === userId)) return "sent";
+    if (receivedRequests.some((entry) => entry.user.id === userId)) return "received";
+    return "none";
+  }
 
   async function handleAccept(friendshipId: string) {
     setActionLoading(friendshipId);
@@ -184,6 +257,47 @@ export function useFriendsPage() {
     setActionLoading(null);
   }
 
+  async function handleSendFriendRequest(targetUser: SearchUser) {
+    if (!currentUserId) return;
+    if (getRelationshipStatus(targetUser.id) !== "none") return;
+
+    const loadingKey = `add-${targetUser.id}`;
+    setActionLoading(loadingKey);
+    setSearchError(null);
+    setSearchNotice(null);
+
+    const supabase = createClient();
+
+    const { error } = await supabase
+      .from("friendships")
+      .insert({
+        requester_id: currentUserId,
+        addressee_id: targetUser.id,
+        status: "pending",
+      });
+
+    if (error) {
+      setSearchError(error.message);
+      setActionLoading(null);
+      return;
+    }
+
+    const pendingFriendship: Friendship = {
+      id: `temp-${Date.now()}-${targetUser.id}`,
+      requester_id: currentUserId,
+      addressee_id: targetUser.id,
+      status: "pending",
+      created_at: new Date().toISOString(),
+    };
+
+    setSentRequests((prev) => [
+      { friendship: pendingFriendship, user: targetUser },
+      ...prev,
+    ]);
+    setSearchNotice("Friend request sent.");
+    setActionLoading(null);
+  }
+
   const getInitials = (name: string | null) => {
     if (!name) return "?";
     return name
@@ -196,14 +310,23 @@ export function useFriendsPage() {
 
   return {
     loading,
+    currentUserId,
     friends,
     receivedRequests,
     sentRequests,
     actionLoading,
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    searching,
+    searchError,
+    searchNotice,
+    getRelationshipStatus,
     handleAccept,
     handleDecline,
     handleCancel,
     handleRemoveFriend,
+    handleSendFriendRequest,
     getInitials,
   };
 }

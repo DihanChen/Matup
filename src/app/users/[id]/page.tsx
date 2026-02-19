@@ -716,7 +716,7 @@ export default function PublicProfilePage() {
                     onClick={() => avatarInputRef.current?.click()}
                     disabled={uploadingAvatar || savingProfile}
                     aria-label={uploadingAvatar ? "Uploading photo" : "Change photo"}
-                    className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-9 h-9 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-md hover:bg-zinc-800 disabled:opacity-50"
+                    className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-9 h-9 rounded-full bg-white text-zinc-900 border border-zinc-200 flex items-center justify-center shadow-md hover:bg-zinc-100 disabled:opacity-50"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                       <path

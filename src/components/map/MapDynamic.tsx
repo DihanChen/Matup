@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { CourtWithDistance } from "@/features/courts/types";
+import type { BoundingBox, DisplayCourt } from "@/features/courts/types";
 import type { EventWithMetadata } from "@/lib/queries/events";
 
 type ExploreEvent = EventWithMetadata & {
@@ -10,13 +10,14 @@ type ExploreEvent = EventWithMetadata & {
 
 type MapDynamicProps = {
   events: ExploreEvent[];
-  courts: CourtWithDistance[];
+  courts: DisplayCourt[];
   userLocation: { lat: number; lng: number } | null;
   center: [number, number];
   zoom: number;
   selectedId: string | null;
   onMarkerClick: (id: string) => void;
   activeView: "events" | "courts";
+  onBoundsChange?: (bounds: BoundingBox) => void;
 };
 
 const ExploreMap = dynamic(() => import("@/components/map/ExploreMap"), {

@@ -1,11 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
-import type { CourtWithDistance } from "@/features/courts/types";
+import type { DisplayCourt } from "@/features/courts/types";
 
 type CourtCardProps = {
-  court: CourtWithDistance;
+  court: DisplayCourt;
   compact?: boolean;
   onSelect?: (id: string) => void;
   isSelected?: boolean;
@@ -41,9 +42,10 @@ export default function CourtCard({ court, compact = false, onSelect, isSelected
   const coverSrc = !hasCustomCover || erroredCoverKey === coverKey ? fallbackCover : customCover;
 
   return (
-    <div
+    <Link
+      href={`/courts/${court.id}`}
       onClick={() => onSelect?.(court.id)}
-      className={`group bg-white rounded-xl border border-zinc-200 hover:shadow-lg transition-all overflow-hidden ${isSelected ? "ring-2 ring-orange-500" : ""} ${onSelect ? "cursor-pointer" : ""}`}
+      className={`group block bg-white rounded-xl border border-zinc-200 hover:shadow-lg transition-all overflow-hidden ${isSelected ? "ring-2 ring-orange-500" : ""}`}
     >
       <div className={`relative ${compact ? "h-24" : "h-40"} bg-zinc-100 overflow-hidden`}>
         <Image
@@ -82,12 +84,24 @@ export default function CourtCard({ court, compact = false, onSelect, isSelected
           {court.name}
         </h3>
 
-        {court.description && (
-          <p className={`${compact ? "text-[10px]" : "text-xs"} text-zinc-500 line-clamp-2`}>
-            {court.description}
-          </p>
-        )}
+        <div className="flex items-center justify-between gap-3">
+          {court.source === "osm" ? (
+            <span className={`${compact ? "text-[9px]" : "text-[11px]"} text-zinc-400`}>
+              via OpenStreetMap
+            </span>
+          ) : (
+            <span className={`${compact ? "text-[9px]" : "text-[11px]"} text-transparent`}>.</span>
+          )}
+          {court.review_count > 0 ? (
+            <span className={`${compact ? "text-[10px]" : "text-xs"} inline-flex items-center gap-1 text-zinc-600`}>
+              <svg viewBox="0 0 24 24" className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} fill="currentColor">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+              </svg>
+              {court.average_rating.toFixed(1)}
+            </span>
+          ) : null}
+        </div>
       </div>
-    </div>
+    </Link>
   );
 }
