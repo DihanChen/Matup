@@ -32,7 +32,7 @@ interface EventCardProps {
 const COVER_FALLBACKS: Record<string, string> = {
   soccer: "/covers/soccer.jpg",
   tennis: "/covers/tennis.jpg",
-  pickleball: "/covers/tennis.jpg",
+  pickleball: "/covers/pickleball.jpg",
   basketball: "/covers/basketball.jpg",
   running: "/covers/running.jpg",
   cycling: "/covers/cycling.jpg",
@@ -138,7 +138,12 @@ export default function EventCard({ event, variant = "default", onJoin, showHost
       <div className={compact ? "p-2.5" : "p-4"}>
         {/* Location + Distance */}
         <div className={`flex items-center justify-between ${compact ? "text-[10px]" : "text-xs"} text-zinc-500 mb-0.5`}>
-          <span className="truncate">{event.location.split(",")[0]}</span>
+          <Link
+            href={`/events/${event.id}`}
+            className="truncate hover:text-orange-500 transition-colors"
+          >
+            {event.location.split(",")[0]}
+          </Link>
           {event.distance !== undefined && (
             <span className="text-zinc-400 font-medium shrink-0 ml-2 text-[10px] tracking-wide">
               {formatDistance(event.distance)}

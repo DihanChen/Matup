@@ -233,37 +233,48 @@ export default function LeagueDetailPageClient() {
     if (fmt === "singles" || fmt === "doubles") {
       const teamA = match.participants.filter((p) => p.team === "A");
       const teamB = match.participants.filter((p) => p.team === "B");
-      const sideANames = teamA.map((p) => p.name || "?").join(" & ");
-      const sideBNames = teamB.map((p) => p.name || "?").join(" & ");
-      const setScores = teamA[0]?.set_scores;
-      if (setScores && setScores.sets && setScores.sets.length > 0) {
-        return (
-          <div className="text-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`font-medium break-words ${match.winner === "A" ? "text-orange-500" : "text-zinc-900"}`}>{sideANames}</span>
-              <span className="text-zinc-400">vs</span>
-              <span className={`font-medium break-words ${match.winner === "B" ? "text-orange-500" : "text-zinc-900"}`}>{sideBNames}</span>
-            </div>
-            <div className="text-xs text-zinc-500 mt-1">{setScores.sets.map((s) => `${s[0]}-${s[1]}`).join(", ")}</div>
-          </div>
-        );
-      }
+      const sideANames = teamA.map((p) => p.name || "?").join(" & ") || "Side A";
+      const sideBNames = teamB.map((p) => p.name || "?").join(" & ") || "Side B";
       return (
-        <div className="text-sm flex flex-wrap items-center gap-2">
-          <span className={`font-medium break-words ${match.winner === "A" ? "text-orange-500" : "text-zinc-900"}`}>{sideANames}</span>
-          <span className="text-zinc-400">vs</span>
-          <span className={`font-medium break-words ${match.winner === "B" ? "text-orange-500" : "text-zinc-900"}`}>{sideBNames}</span>
+        <div className="space-y-1.5 text-sm">
+          <div className={`flex items-start gap-2 ${match.winner === "A" ? "text-orange-500" : "text-zinc-900"}`}>
+            <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+              A
+            </span>
+            <span className="font-medium break-words">{sideANames}</span>
+          </div>
+          <div className={`flex items-start gap-2 ${match.winner === "B" ? "text-orange-500" : "text-zinc-900"}`}>
+            <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+              B
+            </span>
+            <span className="font-medium break-words">{sideBNames}</span>
+          </div>
         </div>
       );
     }
     if (fmt === "team_vs_team") {
       const teamA = match.participants.filter((p) => p.team === "A");
       const teamB = match.participants.filter((p) => p.team === "B");
+      const teamALabel = teamA.map((p) => p.name || "?").join(", ");
+      const teamBLabel = teamB.map((p) => p.name || "?").join(", ");
       return (
-        <div className="text-sm break-words">
-          <span className="font-medium text-zinc-900">Team A ({teamA.map((p) => p.name || "?").join(", ")})</span>
-          <span className="mx-2 font-bold text-orange-500">{teamA[0]?.score ?? 0} - {teamB[0]?.score ?? 0}</span>
-          <span className="font-medium text-zinc-900">Team B ({teamB.map((p) => p.name || "?").join(", ")})</span>
+        <div className="space-y-1.5 text-sm">
+          <div className={`flex items-start gap-2 ${match.winner === "A" ? "text-orange-500" : "text-zinc-900"}`}>
+            <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+              A
+            </span>
+            <span className="font-medium break-words">
+              Team A ({teamALabel || "No players"})
+            </span>
+          </div>
+          <div className={`flex items-start gap-2 ${match.winner === "B" ? "text-orange-500" : "text-zinc-900"}`}>
+            <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+              B
+            </span>
+            <span className="font-medium break-words">
+              Team B ({teamBLabel || "No players"})
+            </span>
+          </div>
         </div>
       );
     }

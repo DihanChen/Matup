@@ -687,7 +687,7 @@ export default function PublicProfilePage() {
             )}
           </div>
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center">
             <div className="relative">
               {profile.avatar_url ? (
                 <Image
@@ -702,27 +702,38 @@ export default function PublicProfilePage() {
                   {getInitials(profile.name)}
                 </div>
               )}
+              {isOwnProfile && (
+                <>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={uploadingAvatar || savingProfile}
+                    aria-label={uploadingAvatar ? "Uploading photo" : "Change photo"}
+                    className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-9 h-9 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-md hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6.75 7.5h1.56a.75.75 0 0 0 .53-.22l1.28-1.28a.75.75 0 0 1 .53-.22h2.68a.75.75 0 0 1 .53.22l1.28 1.28a.75.75 0 0 0 .53.22h1.56A2.25 2.25 0 0 1 19.5 9.75v6A2.25 2.25 0 0 1 17.25 18h-10.5A2.25 2.25 0 0 1 4.5 15.75v-6A2.25 2.25 0 0 1 6.75 7.5Z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"
+                      />
+                    </svg>
+                  </button>
+                </>
+              )}
             </div>
-
-            {isOwnProfile && (
-              <>
-                <input
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={uploadingAvatar || savingProfile}
-                  className="px-4 py-2 text-xs font-medium rounded-full border border-zinc-300 text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-                >
-                  {uploadingAvatar ? "Uploading..." : "Change Photo"}
-                </button>
-              </>
-            )}
           </div>
         </div>
 
@@ -841,14 +852,16 @@ export default function PublicProfilePage() {
           </div>
 
           <div className="space-y-6">
-            <section className="bg-white rounded-2xl border border-zinc-200 p-5">
-              <h3 className="text-base font-bold text-zinc-900 mb-4">Badges</h3>
+            <section>
+              <h3 className="text-lg font-bold text-zinc-900 mb-4">Badges</h3>
               {badges.length === 0 ? (
-                <p className="text-zinc-400 text-sm text-center py-4">No badges yet</p>
+                <div className="bg-zinc-50 rounded-2xl p-8 text-center">
+                  <p className="text-zinc-400 text-sm">No badges yet</p>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {badges.map((badge) => (
-                    <div key={badge.label} className="flex items-center gap-3">
+                    <div key={badge.label} className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4">
                       <div className={`w-10 h-10 ${badge.color} rounded-full flex items-center justify-center`}>
                         {badge.icon === "team" && (
                           <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

@@ -39,3 +39,19 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.leaflet-popup-tip {
+  box-shadow: none;
+}
+
+.custom-event-marker,
+.custom-court-marker,
+.custom-user-marker {
+  background: transparent !important;
+  border: none !important;
+}
