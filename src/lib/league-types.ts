@@ -37,7 +37,6 @@ export type LeagueMatch = {
   week_number: number | null;
   match_date: string | null;
   status: string;
-  source: "legacy" | "workflow";
   workflow_status?: string;
   latest_submission?: {
     id: string;
@@ -52,6 +51,8 @@ export type LeagueMatch = {
   winner: string | null;
   notes: string | null;
   created_at: string;
+  court?: ApiFixtureCourt | null;
+  metadata?: Record<string, unknown> | null;
   participants: {
     user_id: string;
     team: string | null;
@@ -69,12 +70,24 @@ export type ApiFixtureParticipant = {
   name: string | null;
 };
 
+export type ApiFixtureCourt = {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+};
+
 export type ApiFixture = {
   id: string;
   week_number: number | null;
   starts_at: string | null;
+  ends_at: string | null;
   status: string;
   created_at: string;
+  court_id: string | null;
+  court: ApiFixtureCourt | null;
+  metadata?: Record<string, unknown> | null;
   participants: ApiFixtureParticipant[];
   latest_submission: {
     id?: string;
@@ -194,7 +207,7 @@ export function mapFixtureStatusToMatchStatus(status: string): string {
   return "scheduled";
 }
 
-export function mapFixturesToLegacyMatches(fixtures: ApiFixture[]): LeagueMatch[] {
+export function mapFixturesToMatches(fixtures: ApiFixture[]): LeagueMatch[] {
   return fixtures.map((fixture) => {
     const payload = fixture.latest_submission?.payload;
     const parsedSets = Array.isArray(payload?.sets)
@@ -212,7 +225,6 @@ export function mapFixturesToLegacyMatches(fixtures: ApiFixture[]): LeagueMatch[
       week_number: fixture.week_number,
       match_date: fixture.starts_at ? fixture.starts_at.split("T")[0] : null,
       status: mapFixtureStatusToMatchStatus(fixture.status),
-      source: "workflow",
       workflow_status: fixture.status,
       latest_submission:
         fixture.latest_submission?.id &&
@@ -233,6 +245,8 @@ export function mapFixturesToLegacyMatches(fixtures: ApiFixture[]): LeagueMatch[
       winner: payload?.winner || null,
       notes: null,
       created_at: fixture.created_at,
+      court: fixture.court || null,
+      metadata: fixture.metadata || null,
       participants: (fixture.participants || []).map((participant) => ({
         user_id: participant.user_id,
         team: participant.side,
@@ -246,22 +260,8 @@ export function mapFixturesToLegacyMatches(fixtures: ApiFixture[]): LeagueMatch[
   });
 }
 
-export function sortMatchesByCreatedAt(matches: LeagueMatch[]): LeagueMatch[] {
-  return [...matches].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
-}
-
-export function mergeWorkflowMatches(
-  currentMatches: LeagueMatch[],
-  workflowMatches: LeagueMatch[]
-): LeagueMatch[] {
-  const merged = currentMatches.filter((match) => match.source !== "workflow");
-  workflowMatches.forEach((workflowMatch) => {
-    merged.push(workflowMatch);
-  });
-  return sortMatchesByCreatedAt(merged);
-}
+/** @deprecated Use mapFixturesToMatches instead */
+export const mapFixturesToLegacyMatches = mapFixturesToMatches;
 
 export function getRunningModeFromRules(rules: unknown): RunningMode {
   if (!rules || typeof rules !== "object" || Array.isArray(rules)) {

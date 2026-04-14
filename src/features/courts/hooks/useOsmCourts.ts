@@ -19,12 +19,18 @@ function hasBoundsMovedEnough(previous: BoundingBox | null, next: BoundingBox): 
   );
 }
 
-export function useOsmCourts(bounds: BoundingBox | null, sportFilter: string) {
+export function useOsmCourts(bounds: BoundingBox | null, sportFilter: string, enabled = true) {
   const [osmCourts, setOsmCourts] = useState<OsmCourt[]>([]);
   const [loading, setLoading] = useState(false);
   const previousBoundsRef = useRef<BoundingBox | null>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      setOsmCourts([]);
+      setLoading(false);
+      return;
+    }
+
     if (!bounds) {
       setOsmCourts([]);
       setLoading(false);
@@ -55,7 +61,7 @@ export function useOsmCourts(bounds: BoundingBox | null, sportFilter: string) {
       try {
         const apiBaseUrl = getApiBaseUrl();
         const response = await fetch(
-          `${apiBaseUrl}/api/courts/osm?south=${bounds.south}&west=${bounds.west}&north=${bounds.north}&east=${bounds.east}`,
+          `${apiBaseUrl}/api/courts/osm?south=${bounds.south}&west=${bounds.west}&north=${bounds.north}&east=${bounds.east}&persist=1`,
           {
             signal: abortController.signal,
           }
@@ -85,7 +91,7 @@ export function useOsmCourts(bounds: BoundingBox | null, sportFilter: string) {
       abortController.abort();
       window.clearTimeout(timeoutId);
     };
-  }, [bounds, sportFilter]);
+  }, [bounds, enabled, sportFilter]);
 
   return { osmCourts, loading };
 }

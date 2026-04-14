@@ -4,7 +4,16 @@ import Link from "next/link";
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import GoogleOAuthButton from "@/components/auth/GoogleOAuthButton";
+import { syncProfileFromAuthUser } from "@/lib/queries/profile";
 import { createClient } from "@/lib/supabase";
+
+function getSafeNextPath(value: string | null): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/dashboard";
+  }
+
+  return value;
+}
 
 export default function LoginPage() {
   return (
@@ -32,6 +41,7 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const message = searchParams.get("message");
+  const nextPath = getSafeNextPath(searchParams.get("next"));
 
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -60,14 +70,10 @@ function LoginContent() {
     }
 
     if (data.user) {
-      await supabase.from("profiles").upsert({
-        id: data.user.id,
-        name: data.user.user_metadata?.name || null,
-        avatar_url: data.user.user_metadata?.avatar_url || null,
-      }, { onConflict: "id" });
+      await syncProfileFromAuthUser(supabase, data.user);
     }
 
-    router.push("/dashboard");
+    router.push(nextPath);
   }
 
   async function handleGoogleSignIn() {
@@ -78,7 +84,7 @@ function LoginContent() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
       },
     });
 

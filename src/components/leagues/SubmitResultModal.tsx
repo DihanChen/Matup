@@ -1,11 +1,19 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { getApiBaseUrl } from "@/lib/api";
 import type { SubmitResultPayload } from "@/lib/league-types";
+import {
+  ERROR_SELECT_WINNER,
+  ERROR_ENTER_SCORES,
+  ERROR_SUBMIT_FAILED,
+  ERROR_NOT_AUTHENTICATED,
+  ERROR_NETWORK,
+} from "@/lib/result-submission-strings";
 
-type SetScore = { a: string; b: string };
+type GameScore = { a: string; b: string };
 type ForfeitReason =
   | "opponent_no_show"
   | "opponent_injury"
@@ -29,8 +37,9 @@ type SubmitResultModalProps = {
   fixtureId: string;
   weekNumber: number | null;
   sportType?: string;
-  sideA: { userId: string; name: string | null }[];
-  sideB: { userId: string; name: string | null }[];
+  leagueName?: string;
+  sideA: { userId: string; name: string | null; avatarUrl?: string | null }[];
+  sideB: { userId: string; name: string | null; avatarUrl?: string | null }[];
   onSuccess: () => void | Promise<void>;
 };
 
@@ -40,102 +49,193 @@ export default function SubmitResultModal({
   fixtureId,
   weekNumber,
   sportType,
+  leagueName,
   sideA,
   sideB,
   onSuccess,
 }: SubmitResultModalProps) {
+  const isPickleball = sportType === "pickleball";
+  const isTennis =
+    sportType === "tennis" || sportType === "padel" || sportType === "badminton";
+  const isRacketSport = isPickleball || isTennis;
+  const maxGames = isPickleball ? 3 : isTennis ? 5 : 1;
+  const scoreFieldMax = isPickleball ? 30 : isTennis ? 7 : 999;
+
   const [outcomeType, setOutcomeType] = useState<"played" | "forfeit">("played");
-  const [scoreMode, setScoreMode] = useState<"simple" | "detailed">("simple");
+  const [entryMode, setEntryMode] = useState<"detailed" | "quick">("detailed");
+  const [games, setGames] = useState<GameScore[]>([{ a: "", b: "" }]);
+  const [activeGame, setActiveGame] = useState(0);
+  const [sidesSwapped, setSidesSwapped] = useState(false);
   const [winner, setWinner] = useState<"A" | "B" | "">("");
   const [forfeitReason, setForfeitReason] = useState<ForfeitReason>("opponent_no_show");
-  const [sets, setSets] = useState<SetScore[]>([{ a: "", b: "" }]);
   const [notes, setNotes] = useState("");
+  const [showNotes, setShowNotes] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
+    setGames([{ a: "", b: "" }]);
+    setActiveGame(0);
+    setSidesSwapped(false);
     setOutcomeType("played");
-    setScoreMode("simple");
+    setEntryMode("detailed");
     setWinner("");
     setForfeitReason("opponent_no_show");
-    setSets([{ a: "", b: "" }]);
     setNotes("");
+    setShowNotes(false);
+    setShowConfirmation(false);
     setError(null);
     setSubmitting(false);
   }, [isOpen]);
 
-  const sideANames = useMemo(
-    () => sideA.map((participant) => participant.name || "?").join(" & ") || "Side A",
-    [sideA]
+  /* ── Display helpers ── */
+
+  const leftSide = sidesSwapped ? sideB : sideA;
+  const rightSide = sidesSwapped ? sideA : sideB;
+
+  const leftNames = useMemo(
+    () => leftSide.map((p) => p.name || "?"),
+    [leftSide]
   );
-  const sideBNames = useMemo(
-    () => sideB.map((participant) => participant.name || "?").join(" & ") || "Side B",
-    [sideB]
+  const rightNames = useMemo(
+    () => rightSide.map((p) => p.name || "?"),
+    [rightSide]
   );
 
-  function addSet() {
-    setSets((prev) => [...prev, { a: "", b: "" }]);
-  }
+  const currentGame = games[activeGame] || { a: "", b: "" };
+  const leftScore = sidesSwapped ? currentGame.b : currentGame.a;
+  const rightScore = sidesSwapped ? currentGame.a : currentGame.b;
 
-  function removeSet(index: number) {
-    setSets((prev) => prev.filter((_, i) => i !== index));
-  }
+  /* ── Score mutations ── */
 
-  function updateSet(index: number, side: "a" | "b", value: string) {
-    setSets((prev) =>
-      prev.map((set, i) => (i === index ? { ...set, [side]: value } : set))
+  function updateScore(displaySide: "left" | "right", value: string) {
+    const dataSide =
+      displaySide === "left"
+        ? sidesSwapped
+          ? "b"
+          : "a"
+        : sidesSwapped
+        ? "a"
+        : "b";
+    setGames((prev) =>
+      prev.map((g, i) => (i === activeGame ? { ...g, [dataSide]: value } : g))
     );
   }
 
-  function getWinnerFromSets(): "A" | "B" | "" {
-    let setsA = 0;
-    let setsB = 0;
+  function resetCurrentGame() {
+    setGames((prev) =>
+      prev.map((g, i) => (i === activeGame ? { a: "", b: "" } : g))
+    );
+  }
 
-    for (const set of sets) {
-      const a = parseInt(set.a, 10);
-      const b = parseInt(set.b, 10);
+  function switchSides() {
+    setSidesSwapped((prev) => !prev);
+  }
+
+  function addGame() {
+    if (games.length < maxGames) {
+      setGames((prev) => [...prev, { a: "", b: "" }]);
+      setActiveGame(games.length);
+    }
+  }
+
+  function getWinnerFromGames(): "A" | "B" | "" {
+    let winsA = 0;
+    let winsB = 0;
+
+    for (const g of games) {
+      const a = parseInt(g.a, 10);
+      const b = parseInt(g.b, 10);
       if (Number.isNaN(a) || Number.isNaN(b)) continue;
-      if (a > b) setsA += 1;
-      else if (b > a) setsB += 1;
+      if (a > b) winsA += 1;
+      else if (b > a) winsB += 1;
     }
 
-    if (setsA > setsB) return "A";
-    if (setsB > setsA) return "B";
+    if (winsA > winsB) return "A";
+    if (winsB > winsA) return "B";
     return "";
   }
+
+  /* ── Build payload ── */
+
+  function buildPayload(): { payload: SubmitResultPayload; detectedWinner: "A" | "B" } | null {
+    const isForfeit = outcomeType === "forfeit";
+
+    const parsedSetScores =
+      !isForfeit && isRacketSport && entryMode === "detailed"
+        ? games
+            .filter((g) => g.a !== "" && g.b !== "")
+            .map((g) => [parseInt(g.a, 10), parseInt(g.b, 10)])
+        : !isForfeit && entryMode === "detailed" && games.length === 1 && games[0].a !== "" && games[0].b !== ""
+        ? [[parseInt(games[0].a, 10), parseInt(games[0].b, 10)]]
+        : undefined;
+
+    const detectedWinner = isForfeit || entryMode === "quick" ? winner : getWinnerFromGames();
+
+    if (!detectedWinner) {
+      setError(entryMode === "quick" ? ERROR_SELECT_WINNER : ERROR_ENTER_SCORES);
+      return null;
+    }
+
+    return {
+      detectedWinner,
+      payload: {
+        winner: detectedWinner,
+        sets: parsedSetScores && parsedSetScores.length > 0 ? parsedSetScores : undefined,
+        outcome_type: isForfeit ? "forfeit" : "played",
+        forfeit_reason: isForfeit ? forfeitReason : undefined,
+        notes: notes.trim() ? notes.trim() : undefined,
+      },
+    };
+  }
+
+  function getConfirmationSummary(): string {
+    const isForfeit = outcomeType === "forfeit";
+    const detectedWinner = isForfeit || entryMode === "quick" ? winner : getWinnerFromGames();
+    const winnerNames = detectedWinner === "A"
+      ? sideA.map((p) => p.name || "?").join(" & ")
+      : sideB.map((p) => p.name || "?").join(" & ");
+    const loserNames = detectedWinner === "A"
+      ? sideB.map((p) => p.name || "?").join(" & ")
+      : sideA.map((p) => p.name || "?").join(" & ");
+
+    if (isForfeit) {
+      return `${winnerNames} wins by forfeit over ${loserNames}`;
+    }
+
+    if (entryMode === "quick") {
+      return `${winnerNames} defeats ${loserNames}`;
+    }
+
+    const scores = games
+      .filter((g) => g.a !== "" && g.b !== "")
+      .map((g) => `${g.a}-${g.b}`)
+      .join(", ");
+    return `${winnerNames} defeats ${loserNames}${scores ? ` (${scores})` : ""}`;
+  }
+
+  function handlePreSubmit() {
+    setError(null);
+    const result = buildPayload();
+    if (!result) return;
+    setShowConfirmation(true);
+  }
+
+  /* ── Submit ── */
 
   async function handleSubmit() {
     if (!fixtureId) return;
     setSubmitting(true);
     setError(null);
 
-    const isForfeit = outcomeType === "forfeit";
-    const parsedSetScores =
-      !isForfeit && scoreMode === "detailed"
-        ? sets
-            .filter((set) => set.a !== "" && set.b !== "")
-            .map((set) => [parseInt(set.a, 10), parseInt(set.b, 10)])
-        : undefined;
-    const detectedWinner =
-      !isForfeit && scoreMode === "detailed" ? getWinnerFromSets() : winner;
-
-    if (!detectedWinner) {
-      setError("Select who should receive the win before submitting.");
+    const result = buildPayload();
+    if (!result) {
       setSubmitting(false);
       return;
     }
-
-    const payload: SubmitResultPayload = {
-      winner: detectedWinner,
-      sets:
-        !isForfeit && parsedSetScores && parsedSetScores.length > 0
-          ? parsedSetScores
-          : undefined,
-      outcome_type: isForfeit ? "forfeit" : "played",
-      forfeit_reason: isForfeit ? forfeitReason : undefined,
-      notes: notes.trim() ? notes.trim() : undefined,
-    };
+    const { payload } = result;
 
     try {
       const supabase = createClient();
@@ -144,7 +244,7 @@ export default function SubmitResultModal({
       } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
-        setError("You must be logged in to submit results.");
+        setError(ERROR_NOT_AUTHENTICATED);
         setSubmitting(false);
         return;
       }
@@ -161,9 +261,11 @@ export default function SubmitResultModal({
         }
       );
 
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       if (!response.ok) {
-        setError(data?.error || "Failed to submit result.");
+        setError(data?.error || ERROR_SUBMIT_FAILED);
         setSubmitting(false);
         return;
       }
@@ -171,7 +273,11 @@ export default function SubmitResultModal({
       await onSuccess();
       onClose();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Failed to submit result.");
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : ERROR_NETWORK
+      );
     } finally {
       setSubmitting(false);
     }
@@ -179,98 +285,322 @@ export default function SubmitResultModal({
 
   if (!isOpen) return null;
 
-  const detectedWinner = getWinnerFromSets();
-  const isPickleball = sportType === "pickleball";
-  const detailedScoreModeLabel = isPickleball ? "Game Scores" : "Set Scores";
-  const scoreFieldMax = isPickleball ? 30 : 7;
-  const scoreFieldPlaceholder = isPickleball ? "11" : "0";
+  const canSave =
+    outcomeType === "forfeit"
+      ? winner !== ""
+      : entryMode === "quick"
+      ? winner !== ""
+      : games.some((g) => g.a !== "" && g.b !== "");
+
+  const courtLabel = weekNumber ? `Court ${weekNumber}` : "Match";
+  const gameLabel = isTennis ? `Set ${activeGame + 1}` : isPickleball ? `Game ${activeGame + 1}` : null;
+  const subtitle = [leagueName, courtLabel, gameLabel]
+    .filter(Boolean)
+    .join(" \u2022 ");
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[85vh] overflow-y-auto">
-        <div className="flex items-start justify-between gap-4 mb-2">
-          <div>
-            <h3 className="text-xl font-bold text-zinc-900">Submit Result</h3>
-            <p className="text-sm text-zinc-500">
-              {weekNumber ? `Week ${weekNumber}` : "Match"}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 text-zinc-400 hover:text-zinc-600 rounded-lg"
-            aria-label="Close"
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-zinc-50/[0.98]">
+      <div className="mx-auto flex min-h-full max-w-xl flex-col px-5 py-6 sm:px-8 sm:py-10">
+        {/* ── Cancel ── */}
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={submitting}
+          className="inline-flex items-center gap-1.5 self-start text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900 disabled:opacity-50"
+        >
+          <svg
+            className="h-4 w-4"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="w-5 h-5"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
-          </button>
+            <path
+              fillRule="evenodd"
+              d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z"
+              clipRule="evenodd"
+            />
+          </svg>
+          Cancel
+        </button>
+
+        {/* ── Header ── */}
+        <div className="mt-6 text-center">
+          <p className="text-sm font-semibold uppercase tracking-wider text-orange-500">
+            {subtitle}
+          </p>
+          <h2 className="mt-1 text-2xl font-bold text-zinc-900 sm:text-3xl">
+            Add Score
+          </h2>
         </div>
 
-        <div className="text-sm text-zinc-700 mb-4">
-          <span className="font-medium">{sideANames}</span>
-          <span className="mx-2 text-zinc-400">vs</span>
-          <span className="font-medium">{sideBNames}</span>
-        </div>
-
-        <div className="flex bg-zinc-100 rounded-full p-0.5 mb-4">
-          <button
-            type="button"
-            onClick={() => setOutcomeType("played")}
-            className={`flex-1 px-3 py-1 rounded-full text-xs font-medium transition-all ${
-              outcomeType === "played" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
-            }`}
-          >
-            Match Played
-          </button>
-          <button
-            type="button"
-            onClick={() => setOutcomeType("forfeit")}
-            className={`flex-1 px-3 py-1 rounded-full text-xs font-medium transition-all ${
-              outcomeType === "forfeit" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
-            }`}
-          >
-            Forfeit / Cancel
-          </button>
-        </div>
-
+        {/* ── Quick / Detailed toggle ── */}
         {outcomeType === "played" && (
-          <div className="flex bg-zinc-100 rounded-full p-0.5 mb-4">
-            <button
-              type="button"
-              onClick={() => setScoreMode("simple")}
-              className={`flex-1 px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                scoreMode === "simple" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
-              }`}
-            >
-              Winner Only
-            </button>
-            <button
-              type="button"
-              onClick={() => setScoreMode("detailed")}
-              className={`flex-1 px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                scoreMode === "detailed" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
-              }`}
-            >
-              {detailedScoreModeLabel}
-            </button>
+          <div className="mt-4 flex items-center justify-center">
+            <div className="inline-flex rounded-xl border border-zinc-200 bg-white p-1">
+              <button
+                type="button"
+                onClick={() => setEntryMode("detailed")}
+                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  entryMode === "detailed"
+                    ? "bg-orange-500 text-white"
+                    : "text-zinc-600 hover:text-zinc-900"
+                }`}
+              >
+                Detailed
+              </button>
+              <button
+                type="button"
+                onClick={() => setEntryMode("quick")}
+                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  entryMode === "quick"
+                    ? "bg-orange-500 text-white"
+                    : "text-zinc-600 hover:text-zinc-900"
+                }`}
+              >
+                Quick Result
+              </button>
+            </div>
           </div>
         )}
 
-        {outcomeType === "forfeit" ? (
-          <div className="space-y-4">
+        {/* ── Confirmation overlay ── */}
+        {showConfirmation && (
+          <div className="mt-6 rounded-2xl border-2 border-orange-200 bg-orange-50 p-5 text-center">
+            <p className="text-sm font-medium text-zinc-500 mb-2">Confirm result</p>
+            <p className="text-base font-semibold text-zinc-900">{getConfirmationSummary()}</p>
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirmation(false)}
+                className="px-4 py-2 rounded-full border border-zinc-200 text-sm font-medium text-zinc-600 hover:bg-zinc-50 transition-colors"
+              >
+                Go Back
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="px-6 py-2 rounded-full bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50"
+              >
+                {submitting ? "Saving..." : "Confirm & Save"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {outcomeType === "played" && entryMode === "quick" && !showConfirmation ? (
+          /* ── Quick Result: just pick the winner ── */
+          <div className="mt-8 space-y-4">
+            <p className="text-center text-sm text-zinc-500">Who won?</p>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setWinner("A")}
+                className={`rounded-2xl border-2 p-6 text-center transition-all ${
+                  winner === "A"
+                    ? "border-orange-500 bg-orange-50 shadow-md"
+                    : "border-zinc-200 hover:border-orange-300"
+                }`}
+              >
+                <div className="flex justify-center -space-x-2 mb-3">
+                  {sideA.map((player, idx) => (
+                    <div
+                      key={idx}
+                      className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-white"
+                    >
+                      {player.avatarUrl ? (
+                        <Image src={player.avatarUrl} alt={player.name || "Player"} fill className="object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-indigo-100">
+                          <svg className="h-6 w-6 text-indigo-400" viewBox="0 0 20 20" fill="currentColor"><path d="M10 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3.465 14.493a1.23 1.23 0 0 0 .41 1.412A9.957 9.957 0 0 0 10 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 0 0-13.074.003Z" /></svg>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="text-sm font-semibold text-zinc-900">
+                  {sideA.map((p) => p.name || "?").join(" & ")}
+                </div>
+                {winner === "A" && (
+                  <span className="mt-2 inline-block text-xs font-bold text-orange-500">Winner</span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setWinner("B")}
+                className={`rounded-2xl border-2 p-6 text-center transition-all ${
+                  winner === "B"
+                    ? "border-orange-500 bg-orange-50 shadow-md"
+                    : "border-zinc-200 hover:border-orange-300"
+                }`}
+              >
+                <div className="flex justify-center -space-x-2 mb-3">
+                  {sideB.map((player, idx) => (
+                    <div
+                      key={idx}
+                      className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-white"
+                    >
+                      {player.avatarUrl ? (
+                        <Image src={player.avatarUrl} alt={player.name || "Player"} fill className="object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-indigo-100">
+                          <svg className="h-6 w-6 text-indigo-400" viewBox="0 0 20 20" fill="currentColor"><path d="M10 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3.465 14.493a1.23 1.23 0 0 0 .41 1.412A9.957 9.957 0 0 0 10 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 0 0-13.074.003Z" /></svg>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="text-sm font-semibold text-zinc-900">
+                  {sideB.map((p) => p.name || "?").join(" & ")}
+                </div>
+                {winner === "B" && (
+                  <span className="mt-2 inline-block text-xs font-bold text-orange-500">Winner</span>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : outcomeType === "played" && !showConfirmation ? (
+          <>
+            {/* ── Players ── */}
+            <div className="mt-8 flex items-start justify-around gap-4 sm:mt-10">
+              {/* Left side */}
+              <div className="flex flex-col items-center text-center">
+                <div className="flex -space-x-2">
+                  {leftSide.map((player, idx) => (
+                    <div
+                      key={idx}
+                      className="relative h-14 w-14 overflow-hidden rounded-full border-2 border-white sm:h-16 sm:w-16"
+                    >
+                      {player.avatarUrl ? (
+                        <Image
+                          src={player.avatarUrl}
+                          alt={player.name || "Player"}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-indigo-100">
+                          <svg
+                            className="h-7 w-7 text-indigo-400"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            aria-hidden="true"
+                          >
+                            <path d="M10 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3.465 14.493a1.23 1.23 0 0 0 .41 1.412A9.957 9.957 0 0 0 10 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 0 0-13.074.003Z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3">
+                  <div className="text-base font-semibold text-zinc-900 sm:text-lg">
+                    {leftNames[0]}
+                  </div>
+                  {leftNames.length > 1 && (
+                    <div className="mt-0.5 text-sm text-zinc-400">
+                      {leftNames[1]}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right side */}
+              <div className="flex flex-col items-center text-center">
+                <div className="flex -space-x-2">
+                  {rightSide.map((player, idx) => (
+                    <div
+                      key={idx}
+                      className="relative h-14 w-14 overflow-hidden rounded-full border-2 border-white sm:h-16 sm:w-16"
+                    >
+                      {player.avatarUrl ? (
+                        <Image
+                          src={player.avatarUrl}
+                          alt={player.name || "Player"}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-indigo-100">
+                          <svg
+                            className="h-7 w-7 text-indigo-400"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            aria-hidden="true"
+                          >
+                            <path d="M10 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3.465 14.493a1.23 1.23 0 0 0 .41 1.412A9.957 9.957 0 0 0 10 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 0 0-13.074.003Z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3">
+                  <div className="text-base font-semibold text-zinc-900 sm:text-lg">
+                    {rightNames[0]}
+                  </div>
+                  {rightNames.length > 1 && (
+                    <div className="mt-0.5 text-sm text-zinc-400">
+                      {rightNames[1]}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Score Boxes ── */}
+            <div className="mt-8 flex items-center justify-center gap-4 sm:mt-10 sm:gap-6">
+              {/* Left score */}
+              <div className="flex flex-col items-center">
+                <span className="mb-2 text-xs font-semibold uppercase tracking-wider text-indigo-500">
+                  {isTennis ? "Games Won" : "Points Scored"}
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={leftScore}
+                  onChange={(e) => updateScore("left", e.target.value)}
+                  min="0"
+                  max={scoreFieldMax}
+                  placeholder="0"
+                  className="h-36 w-32 rounded-2xl border-2 border-zinc-200 bg-white text-center text-6xl font-bold text-zinc-900 transition-colors focus:border-orange-500 focus:outline-none sm:h-44 sm:w-40 sm:text-7xl [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+              </div>
+
+              {/* VS */}
+              <span className="mt-6 text-2xl font-light text-zinc-300">vs</span>
+
+              {/* Right score */}
+              <div className="flex flex-col items-center">
+                <span className="mb-2 text-xs font-semibold uppercase tracking-wider text-indigo-500">
+                  {isTennis ? "Games Won" : "Points Scored"}
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={rightScore}
+                  onChange={(e) => updateScore("right", e.target.value)}
+                  min="0"
+                  max={scoreFieldMax}
+                  placeholder="0"
+                  className="h-36 w-32 rounded-2xl border-2 border-zinc-200 bg-white text-center text-6xl font-bold text-zinc-900 transition-colors focus:border-orange-500 focus:outline-none sm:h-44 sm:w-40 sm:text-7xl [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+              </div>
+            </div>
+          </>
+        ) : !showConfirmation ? (
+          /* ── Forfeit Mode ── */
+          <div className="mt-8 space-y-5">
             <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-1.5">Reason</label>
+              <label className="mb-1.5 block text-sm font-medium text-zinc-700">
+                Reason
+              </label>
               <select
                 value={forfeitReason}
-                onChange={(event) => setForfeitReason(event.target.value as ForfeitReason)}
-                className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                onChange={(e) =>
+                  setForfeitReason(e.target.value as ForfeitReason)
+                }
+                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-zinc-900 focus:border-transparent focus:ring-2 focus:ring-orange-500"
               >
                 {FORFEIT_REASON_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -280,160 +610,189 @@ export default function SubmitResultModal({
               </select>
             </div>
             <div>
-              <p className="text-sm text-zinc-600 mb-3">Award win to</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <p className="mb-3 text-sm text-zinc-600">Award win to</p>
+              <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
                   onClick={() => setWinner("A")}
-                  className={`p-5 rounded-xl border-2 text-center transition-all ${
+                  className={`rounded-xl border-2 p-5 text-center transition-all ${
                     winner === "A"
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-zinc-200 hover:border-blue-300"
+                      ? "border-orange-500 bg-orange-50"
+                      : "border-zinc-200 hover:border-orange-300"
                   }`}
                 >
-                  <div className="text-sm font-medium text-blue-700">{sideANames}</div>
+                  <div className="text-sm font-medium text-zinc-900">
+                    {sideA.map((p) => p.name || "?").join(" & ")}
+                  </div>
                 </button>
                 <button
                   type="button"
                   onClick={() => setWinner("B")}
-                  className={`p-5 rounded-xl border-2 text-center transition-all ${
+                  className={`rounded-xl border-2 p-5 text-center transition-all ${
                     winner === "B"
-                      ? "border-red-500 bg-red-50"
-                      : "border-zinc-200 hover:border-red-300"
+                      ? "border-orange-500 bg-orange-50"
+                      : "border-zinc-200 hover:border-orange-300"
                   }`}
                 >
-                  <div className="text-sm font-medium text-red-700">{sideBNames}</div>
+                  <div className="text-sm font-medium text-zinc-900">
+                    {sideB.map((p) => p.name || "?").join(" & ")}
+                  </div>
                 </button>
               </div>
             </div>
           </div>
-        ) : scoreMode === "simple" ? (
-          <div>
-            <p className="text-sm text-zinc-600 mb-3">Select winner</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setWinner("A")}
-                className={`p-5 rounded-xl border-2 text-center transition-all ${
-                  winner === "A"
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-zinc-200 hover:border-blue-300"
-                }`}
-              >
-                <div className="text-sm font-medium text-blue-700">{sideANames}</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setWinner("B")}
-                className={`p-5 rounded-xl border-2 text-center transition-all ${
-                  winner === "B"
-                    ? "border-red-500 bg-red-50"
-                    : "border-zinc-200 hover:border-red-300"
-                }`}
-              >
-                <div className="text-sm font-medium text-red-700">{sideBNames}</div>
-              </button>
-            </div>
+        ) : null}
+
+        {/* ── Notes (collapsible) ── */}
+        {showConfirmation ? null : showNotes ? (
+          <div className="mt-4">
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Any notes about this match..."
+              className="w-full resize-none rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 focus:border-transparent focus:ring-2 focus:ring-orange-500"
+            />
           </div>
         ) : (
-          <div className="space-y-3">
-            <div className="grid grid-cols-[1fr_auto_1fr_auto] gap-2 items-center">
-              <div className="text-xs font-medium text-blue-700 text-center">{sideANames}</div>
-              <div></div>
-              <div className="text-xs font-medium text-red-700 text-center">{sideBNames}</div>
-              <div></div>
-            </div>
-            {sets.map((set, index) => (
-              <div key={index} className="grid grid-cols-[1fr_auto_1fr_auto] gap-2 items-center">
-                <input
-                  type="number"
-                  value={set.a}
-                  onChange={(event) => updateSet(index, "a", event.target.value)}
-                  min="0"
-                  max={scoreFieldMax}
-                  placeholder={scoreFieldPlaceholder}
-                  className="w-full px-3 py-2 border border-blue-200 rounded-xl bg-blue-50 text-zinc-900 text-center font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <span className="text-zinc-400 font-bold text-sm">-</span>
-                <input
-                  type="number"
-                  value={set.b}
-                  onChange={(event) => updateSet(index, "b", event.target.value)}
-                  min="0"
-                  max={scoreFieldMax}
-                  placeholder={scoreFieldPlaceholder}
-                  className="w-full px-3 py-2 border border-red-200 rounded-xl bg-red-50 text-zinc-900 text-center font-bold focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-                {sets.length > 1 ? (
+          <button
+            type="button"
+            onClick={() => setShowNotes(true)}
+            className="mt-4 self-center text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-600"
+          >
+            + Add notes
+          </button>
+        )}
+
+        {/* ── Error ── */}
+        {error && (
+          <p className="mt-4 text-center text-sm text-red-500">{error}</p>
+        )}
+
+        {/* ── Save Score Button ── */}
+        {!showConfirmation && (
+          <button
+            type="button"
+            onClick={handlePreSubmit}
+            disabled={submitting || !canSave}
+            className="mx-auto mt-8 flex w-full max-w-xs items-center justify-center gap-2.5 rounded-full bg-orange-500 px-8 py-4 text-base font-semibold text-white shadow-lg transition-colors hover:bg-orange-600 disabled:opacity-50 sm:mt-10"
+          >
+            <svg
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {submitting ? "Saving..." : "Save Score"}
+          </button>
+        )}
+
+        {/* ── Secondary Actions ── */}
+        {!showConfirmation && <div className="mx-auto mt-6 inline-flex items-center gap-1 rounded-2xl border border-zinc-200 bg-white p-1.5">
+          <button
+            type="button"
+            onClick={resetCurrentGame}
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+          >
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H4.28a.75.75 0 0 0-.75.75v3.955a.75.75 0 0 0 1.5 0v-2.134l.228.228a7 7 0 0 0 11.72-3.138.75.75 0 0 0-1.465-.316Zm-10.624-2.85a5.5 5.5 0 0 1 9.201-2.465l.312.31H11.77a.75.75 0 0 0 0 1.5h3.953a.75.75 0 0 0 .75-.75V3.214a.75.75 0 0 0-1.5 0v2.134l-.228-.228A7 7 0 0 0 3.023 8.257a.75.75 0 1 0 1.465.316Z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {isTennis ? "Reset Set" : "Reset Game"}
+          </button>
+          <button
+            type="button"
+            onClick={switchSides}
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+          >
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M13.2 2.24a.75.75 0 0 0 .04 1.06l2.1 1.95H6.75a.75.75 0 0 0 0 1.5h8.59l-2.1 1.95a.75.75 0 1 0 1.02 1.1l3.5-3.25a.75.75 0 0 0 0-1.1l-3.5-3.25a.75.75 0 0 0-1.06.04Zm-6.4 8a.75.75 0 0 0-1.06-.04l-3.5 3.25a.75.75 0 0 0 0 1.1l3.5 3.25a.75.75 0 1 0 1.02-1.1l-2.1-1.95h8.59a.75.75 0 0 0 0-1.5H4.66l2.1-1.95a.75.75 0 0 0 .04-1.06Z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Switch Sides
+          </button>
+        </div>}
+
+        {/* ── Mode toggle: played / forfeit ── */}
+        {!showConfirmation && <div className="mt-4 text-center">
+          {outcomeType === "played" ? (
+            <button
+              type="button"
+              onClick={() => setOutcomeType("forfeit")}
+              className="text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-600"
+            >
+              Report forfeit or cancellation instead
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setOutcomeType("played")}
+              className="text-xs font-medium text-orange-500 transition-colors hover:text-orange-600"
+            >
+              Back to score entry
+            </button>
+          )}
+        </div>}
+
+        {/* ── Game Pagination (racket sports) ── */}
+        {isRacketSport && outcomeType === "played" && entryMode === "detailed" && !showConfirmation && (
+          <div className="mt-8 flex items-center justify-between text-sm text-zinc-400">
+            <div className="flex items-center gap-2.5">
+              <div className="flex gap-1.5">
+                {games.map((_, idx) => (
                   <button
+                    key={idx}
                     type="button"
-                    onClick={() => removeSet(index)}
-                    className="text-zinc-400 hover:text-red-500 transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                ) : (
-                  <div className="w-4"></div>
-                )}
+                    onClick={() => setActiveGame(idx)}
+                    className={`h-2.5 w-2.5 rounded-full transition-colors ${
+                      idx === activeGame
+                        ? "bg-orange-500"
+                        : idx < activeGame
+                        ? "bg-orange-300"
+                        : "bg-zinc-300"
+                    }`}
+                    aria-label={isTennis ? `Set ${idx + 1}` : `Game ${idx + 1}`}
+                  />
+                ))}
               </div>
-            ))}
-            {sets.length < 5 && (
+              <span>
+                {isTennis ? "Set" : "Game"} {activeGame + 1} of {games.length}
+              </span>
+            </div>
+            {games.length < maxGames && (
               <button
                 type="button"
-                onClick={addSet}
-                className="w-full py-2 border border-dashed border-zinc-300 rounded-xl text-sm text-zinc-500 hover:border-orange-300 hover:text-orange-500 transition-all"
+                onClick={addGame}
+                className="text-sm font-medium text-orange-500 transition-colors hover:text-orange-600"
+                aria-label={isTennis ? "Add Set" : "Add Game"}
               >
-                + Add Set
+                + Add {isTennis ? "Set" : "Game"}
               </button>
-            )}
-            {detectedWinner && (
-              <div className="text-center text-sm font-medium text-orange-500">
-                Winner: {detectedWinner === "A" ? sideANames : sideBNames}
-              </div>
             )}
           </div>
         )}
-
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-zinc-700 mb-1.5">Notes (optional)</label>
-          <textarea
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            rows={3}
-            placeholder="Any context for this result..."
-            className="w-full px-4 py-2 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900 resize-none"
-          />
-        </div>
-
-        {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
-
-        <div className="flex flex-col-reverse sm:flex-row gap-3 mt-6">
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="flex-1 py-3 bg-orange-500 text-white rounded-full font-medium hover:bg-orange-600 transition-colors disabled:opacity-50"
-          >
-            {submitting
-              ? "Submitting..."
-              : outcomeType === "forfeit"
-              ? "Submit Forfeit Outcome"
-              : "Submit Result"}
-          </button>
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            className="flex-1 py-3 border border-zinc-200 text-zinc-700 rounded-full font-medium hover:bg-zinc-50 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -48,7 +48,7 @@ export default function CreateEventPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/login");
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
         return;
       }
       setUser(user);
@@ -226,8 +226,8 @@ export default function CreateEventPage() {
         .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
         .scrollbar-thin::-webkit-scrollbar { height: 4px; }
         .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 9999px; }
-        .scrollbar-thin { scrollbar-width: thin; scrollbar-color: #d4d4d8 transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 9999px; }
+        .scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--border-default) transparent; }
       `}</style>
     </div>
   );

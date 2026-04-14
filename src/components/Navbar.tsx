@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { syncProfileFromAuthUser } from "@/lib/queries/profile";
 import type { User } from "@supabase/supabase-js";
 
 export default function Navbar() {
@@ -36,11 +37,7 @@ export default function Navbar() {
       setUser(user);
 
       if (user) {
-        await supabase.from("profiles").upsert({
-          id: user.id,
-          name: user.user_metadata?.name || null,
-          avatar_url: user.user_metadata?.avatar_url || null,
-        }, { onConflict: "id" });
+        await syncProfileFromAuthUser(supabase, user);
       }
 
       setLoading(false);

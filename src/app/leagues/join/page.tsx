@@ -253,7 +253,7 @@ function JoinLeagueContent() {
             Join <span className="text-orange-500">League</span>
           </h1>
           <p className="text-sm text-zinc-500">
-            Enter the 8-character invite code from your organizer.
+            Enter the 8-character invite code from your organizer. Codes use digits and letters A–F only.
           </p>
 
           <div>

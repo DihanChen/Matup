@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import StepIndicator from "@/components/create-event/StepIndicator";
 import LeagueDetailsStep from "@/features/leagues/components/create/LeagueDetailsStep";
@@ -9,6 +9,10 @@ import CreateLeagueLoadingState from "@/features/leagues/components/create/Creat
 import CreateLeagueNavigation from "@/features/leagues/components/create/CreateLeagueNavigation";
 import CreateLeaguePremiumState from "@/features/leagues/components/create/CreateLeaguePremiumState";
 import CreateLeagueSuccessState from "@/features/leagues/components/create/CreateLeagueSuccessState";
+import {
+  buildCopiedLeagueName,
+  deriveLeagueFormData,
+} from "@/features/leagues/components/create/formData";
 import InviteFriendsStep from "@/features/leagues/components/create/InviteFriendsStep";
 import ScheduleStep from "@/features/leagues/components/create/ScheduleStep";
 import SportAndFormatStep from "@/features/leagues/components/create/SportAndFormatStep";
@@ -17,14 +21,40 @@ import type {
   LeagueCreateFormData,
 } from "@/features/leagues/components/create/types";
 import { buildLeagueRules } from "@/lib/league-rules";
+import type { League } from "@/lib/league-types";
 import { createClient } from "@/lib/supabase";
 
-const TOTAL_STEPS = 4;
+const CREATE_TOTAL_STEPS = 4;
+const CREATE_STEP_LABELS = [
+  "Choose format",
+  "Set schedule",
+  "League details",
+  "Invite players",
+];
+const EDIT_STEP_LABELS = [
+  "Choose format",
+  "Set schedule",
+  "League details",
+];
 
-export default function CreateLeaguePage() {
+type Props = {
+  mode?: "create" | "edit";
+  leagueId?: string;
+};
+
+export default function CreateLeaguePage({
+  mode = "create",
+  leagueId: editLeagueId,
+}: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isEditMode = mode === "edit";
+  const copyLeagueId = !isEditMode ? searchParams.get("copyLeagueId") : null;
+  const totalSteps = isEditMode ? 3 : CREATE_TOTAL_STEPS;
+  const stepLabels = isEditMode ? EDIT_STEP_LABELS : CREATE_STEP_LABELS;
   const [user, setUser] = useState<User | null>(null);
-  const [isPremium, setIsPremium] = useState<boolean | null>(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(1);
@@ -35,66 +65,119 @@ export default function CreateLeaguePage() {
   const [createdLeagueId, setCreatedLeagueId] = useState<string | null>(null);
   const [formData, setFormData] = useState<LeagueCreateFormData>({
     sportType: "",
+    leagueType: "",
     matchType: "",
     rotationType: "",
     scoringFormat: "",
     runningComparisonMode: "personal_progress",
+    tournamentSeeding: "random",
     startDate: "",
     startTime: "",
     seasonWeeks: 10,
     name: "",
     description: "",
     maxMembers: 20,
+    defaultCourtId: "",
+    defaultCourtName: "",
   });
 
   useEffect(() => {
     const supabase = createClient();
 
     async function init() {
+      setInitializing(true);
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (!user) {
-        router.push("/login");
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
         return;
       }
 
       setUser(user);
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_premium")
-        .eq("id", user.id)
-        .single();
-
-      setIsPremium(profile?.is_premium ?? false);
-
-      setLoadingFriends(true);
-      const { data: friendshipsData } = await supabase
-        .from("friendships")
-        .select("requester_id, addressee_id")
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
-        .eq("status", "accepted");
-
-      if (friendshipsData && friendshipsData.length > 0) {
-        const friendIds = friendshipsData.map((f) =>
-          f.requester_id === user.id ? f.addressee_id : f.requester_id
-        );
-
-        const { data: profiles } = await supabase
+      let premiumAccess = true;
+      if (!isEditMode) {
+        const { data: profile } = await supabase
           .from("profiles")
-          .select("id, name, avatar_url")
-          .in("id", friendIds);
+          .select("is_premium")
+          .eq("id", user.id)
+          .single();
 
-        if (profiles) setFriends(profiles);
+        premiumAccess = profile?.is_premium ?? false;
+        setIsPremium(premiumAccess);
+      } else {
+        setIsPremium(true);
       }
 
-      setLoadingFriends(false);
+      if (!premiumAccess && !isEditMode) {
+        setInitializing(false);
+        return;
+      }
+
+      if (!isEditMode) {
+        setLoadingFriends(true);
+        const { data: friendshipsData } = await supabase
+          .from("friendships")
+          .select("requester_id, addressee_id")
+          .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+          .eq("status", "accepted");
+
+        if (friendshipsData && friendshipsData.length > 0) {
+          const friendIds = friendshipsData.map((f) =>
+            f.requester_id === user.id ? f.addressee_id : f.requester_id
+          );
+
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, name, avatar_url")
+            .in("id", friendIds);
+
+          if (profiles) setFriends(profiles);
+        }
+
+        setLoadingFriends(false);
+      }
+
+      const sourceLeagueId = isEditMode ? editLeagueId : copyLeagueId;
+      if (sourceLeagueId) {
+        const { data: sourceLeague, error: sourceLeagueError } = await supabase
+          .from("leagues")
+          .select(
+            "id, name, description, sport_type, scoring_format, league_type, creator_id, max_members, start_date, season_weeks, rotation_type, status, created_at, rules_jsonb"
+          )
+          .eq("id", sourceLeagueId)
+          .single<League>();
+
+        if (sourceLeagueError || !sourceLeague) {
+          setError("League not found.");
+          setInitializing(false);
+          return;
+        }
+
+        if (isEditMode && sourceLeague.creator_id !== user.id) {
+          router.push(`/leagues/${sourceLeagueId}`);
+          return;
+        }
+
+        const nextFormData = deriveLeagueFormData(sourceLeague);
+        setFormData(
+          isEditMode
+            ? nextFormData
+            : {
+                ...nextFormData,
+                name: buildCopiedLeagueName(nextFormData.name),
+              }
+        );
+      }
+
+      setInitializing(false);
     }
 
     init();
-  }, [router]);
+  }, [copyLeagueId, editLeagueId, isEditMode, router]);
 
   const updateFormData = (updates: Partial<LeagueCreateFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -105,8 +188,9 @@ export default function CreateLeaguePage() {
       case 1:
         if (!formData.sportType) return false;
         if (formData.sportType === "tennis" || formData.sportType === "pickleball") {
+          if (!formData.leagueType) return false;
           if (!formData.matchType) return false;
-          if (formData.matchType === "doubles" && !formData.rotationType) return false;
+          if (formData.leagueType === "season" && formData.matchType === "doubles" && !formData.rotationType) return false;
         }
         return true;
       case 2:
@@ -114,14 +198,14 @@ export default function CreateLeaguePage() {
       case 3:
         return !!formData.name.trim();
       case 4:
-        return true;
+        return !isEditMode;
       default:
         return false;
     }
   };
 
   const handleNext = () => {
-    if (step < TOTAL_STEPS && canProceed()) {
+    if (step < totalSteps && canProceed()) {
       setStep(step + 1);
       setError(null);
     }
@@ -186,27 +270,54 @@ export default function CreateLeaguePage() {
       seasonWeeks: formData.seasonWeeks,
     });
 
+    const resolvedLeagueType =
+      (formData.sportType === "tennis" || formData.sportType === "pickleball") && formData.leagueType === "tournament"
+        ? "tournament"
+        : "season";
+
+    const leaguePayload = {
+      name: formData.name,
+      description: formData.description || null,
+      sport_type: formData.sportType,
+      scoring_format: scoringFormat,
+      league_type: resolvedLeagueType,
+      max_members: formData.maxMembers,
+      start_date: formData.startDate || null,
+      season_weeks: formData.seasonWeeks,
+      rotation_type: shouldSetRotationType ? formData.rotationType : null,
+      default_court_id: formData.defaultCourtId || null,
+      rules_version: 1,
+      rules_jsonb: rulesJson,
+    };
+
+    if (isEditMode && editLeagueId) {
+      const { error: leagueError } = await supabase
+        .from("leagues")
+        .update(leaguePayload)
+        .eq("id", editLeagueId)
+        .eq("creator_id", user.id);
+
+      if (leagueError) {
+        setError(leagueError.message);
+        setLoading(false);
+        return;
+      }
+
+      router.push(`/leagues/${editLeagueId}?updated=1`);
+      return;
+    }
+
     const { data: leagueData, error: leagueError } = await supabase
       .from("leagues")
       .insert({
-        name: formData.name,
-        description: formData.description || null,
-        sport_type: formData.sportType,
-        scoring_format: scoringFormat,
-        league_type: "season",
+        ...leaguePayload,
         creator_id: user.id,
-        max_members: formData.maxMembers,
-        start_date: formData.startDate || null,
-        season_weeks: formData.seasonWeeks,
-        rotation_type: shouldSetRotationType ? formData.rotationType : null,
-        rules_version: 1,
-        rules_jsonb: rulesJson,
       })
       .select("id")
       .single();
 
-    if (leagueError) {
-      setError(leagueError.message);
+    if (leagueError || !leagueData) {
+      setError(leagueError?.message || "Failed to create league.");
       setLoading(false);
       return;
     }
@@ -251,8 +362,8 @@ export default function CreateLeaguePage() {
       .slice(0, 2);
   };
 
-  if (isPremium === null) return <CreateLeagueLoadingState />;
-  if (!isPremium) return <CreateLeaguePremiumState />;
+  if (initializing) return <CreateLeagueLoadingState />;
+  if (!isEditMode && !isPremium) return <CreateLeaguePremiumState />;
   if (showSuccess) {
     return (
       <CreateLeagueSuccessState
@@ -288,7 +399,7 @@ export default function CreateLeaguePage() {
   return (
     <div className="min-h-screen bg-white">
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <StepIndicator currentStep={step} totalSteps={TOTAL_STEPS} />
+        <StepIndicator currentStep={step} totalSteps={totalSteps} labels={stepLabels} />
 
         {error && (
           <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm">
@@ -299,7 +410,7 @@ export default function CreateLeaguePage() {
         {step === 1 && <SportAndFormatStep formData={formData} onUpdateFormData={updateFormData} />}
         {step === 2 && <ScheduleStep formData={formData} onUpdateFormData={updateFormData} />}
         {step === 3 && <LeagueDetailsStep formData={formData} onUpdateFormData={updateFormData} />}
-        {step === 4 && (
+        {step === 4 && !isEditMode && (
           <InviteFriendsStep
             loadingFriends={loadingFriends}
             friends={friends}
@@ -313,8 +424,10 @@ export default function CreateLeaguePage() {
           canProceed={canProceed()}
           loading={loading}
           step={step}
-          totalSteps={TOTAL_STEPS}
-          onNextOrSubmit={step === TOTAL_STEPS ? handleSubmit : handleNext}
+          totalSteps={totalSteps}
+          submitLabel={isEditMode ? "Save Changes" : "Create League"}
+          loadingLabel={isEditMode ? "Saving..." : "Creating..."}
+          onNextOrSubmit={step === totalSteps ? handleSubmit : handleNext}
           onBack={handleBack}
         />
       </main>
@@ -327,8 +440,8 @@ export default function CreateLeaguePage() {
         .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
         .scrollbar-thin::-webkit-scrollbar { height: 4px; }
         .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 9999px; }
-        .scrollbar-thin { scrollbar-width: thin; scrollbar-color: #d4d4d8 transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 9999px; }
+        .scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--border-default) transparent; }
       `}</style>
     </div>
   );

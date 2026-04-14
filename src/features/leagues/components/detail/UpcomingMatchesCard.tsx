@@ -9,6 +9,93 @@ type Props = {
   data: LeagueDetailContentProps;
 };
 
+type H2HRecord = { wins: number; losses: number; draws: number };
+
+function computeH2H(
+  currentUserId: string,
+  opponentIds: string[],
+  completedMatches: LeagueMatch[]
+): H2HRecord {
+  const record: H2HRecord = { wins: 0, losses: 0, draws: 0 };
+  if (opponentIds.length === 0) return record;
+  const opponentIdSet = new Set(opponentIds);
+
+  for (const match of completedMatches) {
+    const userParticipant = match.participants.find((p) => p.user_id === currentUserId);
+    const hasOpponent = match.participants.some((p) => opponentIdSet.has(p.user_id));
+    if (!userParticipant || !hasOpponent || !match.winner) continue;
+
+    if (match.winner === userParticipant.team) {
+      record.wins++;
+    } else {
+      record.losses++;
+    }
+  }
+  return record;
+}
+
+function getOpponentForm(
+  opponentIds: string[],
+  completedMatches: LeagueMatch[]
+): Array<"W" | "L" | "D"> {
+  if (opponentIds.length === 0) return [];
+  const primaryOpponent = opponentIds[0];
+  const results: Array<{ week: number; result: "W" | "L" | "D" }> = [];
+
+  for (const match of completedMatches) {
+    const opponentParticipant = match.participants.find((p) => p.user_id === primaryOpponent);
+    if (!opponentParticipant || !match.winner) continue;
+    results.push({
+      week: match.week_number ?? 0,
+      result: match.winner === opponentParticipant.team ? "W" : "L",
+    });
+  }
+
+  results.sort((a, b) => a.week - b.week);
+  return results.slice(-3).map((r) => r.result);
+}
+
+function generateIcsContent(match: LeagueMatch, sideANames: string, sideBNames: string): string {
+  const startDate = match.match_date
+    ? match.match_date.replace(/-/g, "") + "T090000"
+    : "";
+  const endDate = match.match_date
+    ? match.match_date.replace(/-/g, "") + "T100000"
+    : "";
+  const location = match.court ? `${match.court.name}${match.court.address ? `, ${match.court.address}` : ""}` : "";
+  const summary = `${sideANames} vs ${sideBNames}`;
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//MatUp//League Match//EN",
+    "BEGIN:VEVENT",
+    `DTSTART:${startDate}`,
+    `DTEND:${endDate}`,
+    `SUMMARY:${summary}`,
+    location ? `LOCATION:${location}` : "",
+    `DESCRIPTION:League match${match.week_number ? ` - Week ${match.week_number}` : ""}`,
+    `UID:${match.id}@matup`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ]
+    .filter(Boolean)
+    .join("\r\n");
+}
+
+function handleAddToCalendar(match: LeagueMatch, sideANames: string, sideBNames: string) {
+  const icsContent = generateIcsContent(match, sideANames, sideBNames);
+  const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `match-week${match.week_number ?? "0"}.ics`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 const OWNER_VISIBLE_MATCHES_STEP = 12;
 
 function toStatusLabel(statusKey: string): string {
@@ -16,7 +103,7 @@ function toStatusLabel(statusKey: string): string {
 }
 
 function getStatusKey(match: LeagueMatch): string {
-  if (match.source === "workflow" && match.workflow_status) {
+  if (match.workflow_status) {
     return match.workflow_status;
   }
   return "scheduled";
@@ -43,14 +130,18 @@ export default function UpcomingMatchesCard({ data }: Props) {
     hasUpcomingMatches,
     upcomingMatchesSpanClass,
     displayedUpcomingMatches,
+    completedMatches,
     currentUserId,
     isOwnerOrAdmin,
+    isRacketLeague,
     reviewingSubmissionId,
     resolvingFixtureId,
+    reschedulingFixtureId,
     onSelectSubmitResult,
     onHandleReviewSubmission,
     onOpenRejectSubmissionModal,
     onOpenResolveDisputeModal,
+    onOpenRescheduleModal,
   } = data;
   const [searchValue, setSearchValue] = useState("");
   const [weekFilter, setWeekFilter] = useState("all");
@@ -80,7 +171,6 @@ export default function UpcomingMatchesCard({ data }: Props) {
         const userIsParticipant =
           !!currentUserId &&
           match.participants.some((participant) => participant.user_id === currentUserId);
-        const isWorkflow = match.source === "workflow";
         const parsedMatchDate = match.match_date
           ? new Date(`${match.match_date}T00:00:00`)
           : null;
@@ -89,7 +179,6 @@ export default function UpcomingMatchesCard({ data }: Props) {
           !Number.isNaN(parsedMatchDate.getTime()) &&
           parsedMatchDate.getTime() > todayLocal.getTime();
         const canSubmit =
-          isWorkflow &&
           (isOwnerOrAdmin || (userIsParticipant && !isFutureMatch)) &&
           match.workflow_status === "scheduled";
         const isOpponentWithPendingSubmission =
@@ -99,6 +188,18 @@ export default function UpcomingMatchesCard({ data }: Props) {
         const isReviewing = reviewingSubmissionId === match.latest_submission?.id;
         const weekKey = match.week_number ? String(match.week_number) : "none";
         const searchBlob = `${sideANames} ${sideBNames} ${statusLabel} ${match.week_number ?? ""}`.toLowerCase();
+
+        const opponentIds = currentUserId
+          ? match.participants
+              .filter((p) => p.user_id !== currentUserId)
+              .map((p) => p.user_id)
+          : [];
+        const h2h = currentUserId && isRacketLeague
+          ? computeH2H(currentUserId, opponentIds, completedMatches)
+          : null;
+        const opponentForm = currentUserId && isRacketLeague
+          ? getOpponentForm(opponentIds, completedMatches)
+          : [];
 
         return {
           match,
@@ -113,9 +214,11 @@ export default function UpcomingMatchesCard({ data }: Props) {
           isOpponentWithPendingSubmission,
           isReviewing,
           searchBlob,
+          h2h,
+          opponentForm,
         };
       });
-  }, [currentUserId, displayedUpcomingMatches, isOwnerOrAdmin, reviewingSubmissionId, todayLocal]);
+  }, [currentUserId, displayedUpcomingMatches, completedMatches, isOwnerOrAdmin, isRacketLeague, reviewingSubmissionId, todayLocal]);
 
   const weekOptions = useMemo(() => {
     return [...new Set(matchCards.map((item) => item.weekKey))];
@@ -165,14 +268,68 @@ export default function UpcomingMatchesCard({ data }: Props) {
               {item.sideANames} vs {item.sideBNames}
             </div>
           )}
-          {item.match.match_date && (
-            <span className="text-xs text-zinc-400">
-              {new Date(item.match.match_date).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })}
-            </span>
+          {item.h2h && (item.h2h.wins > 0 || item.h2h.losses > 0) && (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-zinc-500">
+                H2H: <span className="font-medium text-zinc-700">{item.h2h.wins}W-{item.h2h.losses}L</span>
+              </span>
+              {item.opponentForm.length > 0 && (
+                <span className="flex items-center gap-0.5 text-xs text-zinc-400">
+                  <span className="mr-0.5">Opp:</span>
+                  {item.opponentForm.map((r, i) => (
+                    <span
+                      key={i}
+                      className={`w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center ${
+                        r === "W" ? "bg-emerald-100 text-emerald-700" : r === "L" ? "bg-red-100 text-red-600" : "bg-zinc-100 text-zinc-500"
+                      }`}
+                    >
+                      {r}
+                    </span>
+                  ))}
+                </span>
+              )}
+            </div>
           )}
+          <div className="flex items-center gap-2 flex-wrap mt-1">
+            {item.match.match_date && (
+              <span className="text-xs text-zinc-400">
+                {new Date(item.match.match_date).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            )}
+            {item.match.court && (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${item.match.court.latitude},${item.match.court.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                </svg>
+                {item.match.court.name}
+              </a>
+            )}
+            {item.match.court?.address && (
+              <span className="text-xs text-zinc-400">{item.match.court.address}</span>
+            )}
+            {item.match.match_date && (
+              <button
+                type="button"
+                onClick={() => handleAddToCalendar(item.match, item.sideANames, item.sideBNames)}
+                className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-orange-500 transition-colors"
+                title="Add to Calendar"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                </svg>
+                Cal
+              </button>
+            )}
+          </div>
           <div className="mt-2 flex flex-wrap gap-2">
             {item.canSubmit && (
               <button
@@ -213,6 +370,16 @@ export default function UpcomingMatchesCard({ data }: Props) {
                 {resolvingFixtureId === item.match.id ? "Resolving..." : "Resolve Dispute"}
               </button>
             )}
+            {isOwnerOrAdmin && !item.isDisputed && item.statusKey === "scheduled" && (
+              <button
+                type="button"
+                onClick={() => onOpenRescheduleModal(item.match)}
+                disabled={reschedulingFixtureId === item.match.id}
+                className="px-3 py-1.5 border border-zinc-200 text-zinc-600 rounded-full text-xs font-medium hover:bg-zinc-50 transition-colors disabled:opacity-50"
+              >
+                {reschedulingFixtureId === item.match.id ? "Rescheduling..." : "Reschedule"}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -229,7 +396,11 @@ export default function UpcomingMatchesCard({ data }: Props) {
     >
       <div className="flex items-center justify-between mb-4 gap-2">
         <h2 className="text-lg font-semibold text-zinc-900">
-          {isParticipantView ? "Current & Next Matches" : "Upcoming Matches"}
+          {isParticipantView
+            ? "Current & Next Matches"
+            : isOwnerManagementView
+            ? "Active Matchups"
+            : "Upcoming Matches"}
         </h2>
         {!isParticipantView && (
           <span className="text-xs font-medium text-zinc-500">
@@ -310,7 +481,9 @@ export default function UpcomingMatchesCard({ data }: Props) {
 
           <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-900">Scheduled Matches</h3>
+              <h3 className="text-sm font-semibold text-zinc-900">
+                {isOwnerManagementView ? "Match Queue" : "Scheduled Matches"}
+              </h3>
               <span className="text-xs font-medium text-zinc-500">
                 {scheduledMatches.length} shown
               </span>

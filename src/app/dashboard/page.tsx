@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import EventCard from "@/components/EventCard";
+import { ErrorState } from "@/components/ui";
 
 type Event = {
   id: string;
@@ -22,98 +23,138 @@ type Event = {
 
 type Tab = "hosting" | "joining" | "past";
 
+async function attachParticipantCounts(
+  supabase: ReturnType<typeof createClient>,
+  events: Event[]
+): Promise<Event[]> {
+  if (events.length === 0) return events;
+  const ids = events.map((e) => e.id);
+  const { data } = await supabase
+    .from("event_participants")
+    .select("event_id")
+    .in("event_id", ids);
+  const counts: Record<string, number> = {};
+  data?.forEach((row: { event_id: string }) => {
+    counts[row.event_id] = (counts[row.event_id] || 0) + 1;
+  });
+  return events.map((e) => ({ ...e, participant_count: counts[e.id] || 0 }));
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [activeTab, setActiveTab] = useState<Tab>("hosting");
   const [createdEvents, setCreatedEvents] = useState<Event[]>([]);
   const [joinedEvents, setJoinedEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
 
+  const retry = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    setReloadKey((k) => k + 1);
+  }, []);
+
   useEffect(() => {
     const supabase = createClient();
 
     async function fetchData() {
-      const { data: { user } } = await supabase.auth.getUser();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.push("/login");
-        return;
-      }
+        if (!user) {
+          router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+          return;
+        }
 
-      setUser(user);
+        setUser(user);
 
-      // Fetch events I'm hosting (upcoming)
-      const { data: created } = await supabase
-        .from("events")
-        .select("*")
-        .eq("creator_id", user.id)
-        .gte("datetime", new Date().toISOString())
-        .order("datetime", { ascending: true });
-
-      setCreatedEvents(created || []);
-
-      // Fetch events I've joined (upcoming, not my own)
-      const { data: participations } = await supabase
-        .from("event_participants")
-        .select("event_id")
-        .eq("user_id", user.id);
-
-      if (participations && participations.length > 0) {
-        const eventIds = participations.map((p) => p.event_id);
-
-        const { data: joined } = await supabase
+        // Fetch events I'm hosting (upcoming)
+        const { data: created, error: createdErr } = await supabase
           .from("events")
           .select("*")
-          .in("id", eventIds)
-          .neq("creator_id", user.id)
+          .eq("creator_id", user.id)
           .gte("datetime", new Date().toISOString())
           .order("datetime", { ascending: true });
 
-        setJoinedEvents(joined || []);
-      }
+        if (createdErr) throw createdErr;
 
-      // Fetch past events (both hosted and joined)
-      const { data: pastCreated } = await supabase
-        .from("events")
-        .select("*")
-        .eq("creator_id", user.id)
-        .lt("datetime", new Date().toISOString())
-        .order("datetime", { ascending: false })
-        .limit(10);
+        const createdList = created || [];
+        setCreatedEvents(await attachParticipantCounts(supabase, createdList));
 
-      const { data: pastParticipations } = await supabase
-        .from("event_participants")
-        .select("event_id")
-        .eq("user_id", user.id);
+        // Fetch events I've joined (upcoming, not my own)
+        const { data: participations, error: participationsErr } = await supabase
+          .from("event_participants")
+          .select("event_id")
+          .eq("user_id", user.id);
 
-      let allPastEvents = pastCreated || [];
+        if (participationsErr) throw participationsErr;
 
-      if (pastParticipations && pastParticipations.length > 0) {
-        const pastEventIds = pastParticipations.map((p) => p.event_id);
-        const { data: pastJoined } = await supabase
+        if (participations && participations.length > 0) {
+          const eventIds = participations.map((p) => p.event_id);
+
+          const { data: joined, error: joinedErr } = await supabase
+            .from("events")
+            .select("*")
+            .in("id", eventIds)
+            .neq("creator_id", user.id)
+            .gte("datetime", new Date().toISOString())
+            .order("datetime", { ascending: true });
+
+          if (joinedErr) throw joinedErr;
+
+          setJoinedEvents(await attachParticipantCounts(supabase, joined || []));
+        }
+
+        // Fetch past events (both hosted and joined)
+        const { data: pastCreated, error: pastCreatedErr } = await supabase
           .from("events")
           .select("*")
-          .in("id", pastEventIds)
-          .neq("creator_id", user.id)
+          .eq("creator_id", user.id)
           .lt("datetime", new Date().toISOString())
           .order("datetime", { ascending: false })
           .limit(10);
 
-        if (pastJoined) {
-          allPastEvents = [...allPastEvents, ...pastJoined];
+        if (pastCreatedErr) throw pastCreatedErr;
+
+        const { data: pastParticipations } = await supabase
+          .from("event_participants")
+          .select("event_id")
+          .eq("user_id", user.id);
+
+        let allPastEvents = pastCreated || [];
+
+        if (pastParticipations && pastParticipations.length > 0) {
+          const pastEventIds = pastParticipations.map((p) => p.event_id);
+          const { data: pastJoined } = await supabase
+            .from("events")
+            .select("*")
+            .in("id", pastEventIds)
+            .neq("creator_id", user.id)
+            .lt("datetime", new Date().toISOString())
+            .order("datetime", { ascending: false })
+            .limit(10);
+
+          if (pastJoined) {
+            allPastEvents = [...allPastEvents, ...pastJoined];
+          }
         }
+
+        allPastEvents.sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
+        setPastEvents(await attachParticipantCounts(supabase, allPastEvents.slice(0, 10)));
+
+        setLoading(false);
+      } catch (err) {
+        console.error("DashboardPage fetchData failed", err);
+        setError(err instanceof Error ? err : new Error("Failed to load dashboard"));
+        setLoading(false);
       }
-
-      allPastEvents.sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
-      setPastEvents(allPastEvents.slice(0, 10));
-
-      setLoading(false);
     }
 
     fetchData();
-  }, [router]);
+  }, [router, reloadKey]);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "hosting", label: "Hosting" },
@@ -179,6 +220,26 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white">
+        <main className="max-w-[980px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <div className="mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold text-zinc-900 mb-2">
+              My <span className="text-orange-500">Activities</span>
+            </h1>
+            <p className="text-zinc-500">Manage your upcoming and past events</p>
+          </div>
+          <ErrorState
+            title="Couldn't load your activities"
+            description="We hit a snag pulling your events. Check your connection and try again."
+            onRetry={retry}
+          />
         </main>
       </div>
     );

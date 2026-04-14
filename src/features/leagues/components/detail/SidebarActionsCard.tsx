@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import type { LeagueDetailContentProps } from "@/features/leagues/components/detail/types";
 
 type Props = {
@@ -11,7 +10,6 @@ export default function SidebarActionsCard({ data }: Props) {
   const {
     league,
     hasLeagueActions,
-    showRecordResultsAction,
     showGenerateSchedule,
     canGenerateSchedule,
     generateScheduleMessage,
@@ -21,11 +19,31 @@ export default function SidebarActionsCard({ data }: Props) {
     showEmailMembersAction,
     hasSecondaryLeagueActionPair,
     showDeleteLeagueAction,
+    allMatches,
     onHandleGenerateSchedule,
     onOpenAssignedTeamsModal,
     onOpenEmailModal,
     onOpenDeleteLeague,
+    onGeneratePlayoffs,
+    generatingPlayoffs,
   } = data;
+
+  // Show "Generate Playoffs" when all season fixtures are finalized and no playoff fixtures exist
+  const hasPlayoffFixtures = allMatches.some(
+    (m) => m.metadata && (m.metadata as Record<string, unknown>).tournament === true
+  );
+  const seasonFixtures = allMatches.filter(
+    (m) => !m.metadata || (m.metadata as Record<string, unknown>).tournament !== true
+  );
+  const allSeasonFinalized =
+    seasonFixtures.length > 0 &&
+    seasonFixtures.every((m) => m.status === "completed" || m.workflow_status === "finalized" || m.workflow_status === "cancelled");
+  const showGeneratePlayoffs =
+    data.isOwnerOrAdmin &&
+    league.league_type === "season" &&
+    !isRunningLeague &&
+    allSeasonFinalized &&
+    !hasPlayoffFixtures;
 
   if (!hasLeagueActions) return null;
 
@@ -33,15 +51,6 @@ export default function SidebarActionsCard({ data }: Props) {
     <div className="bg-white rounded-3xl border border-zinc-200 p-5">
       <h2 className="text-sm font-semibold text-zinc-900 mb-3">League Actions</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {showRecordResultsAction && (
-          <Link
-            href={`/leagues/${league.id}/record`}
-            className="sm:col-span-2 inline-flex items-center justify-center px-3 py-2.5 bg-orange-500 text-white rounded-full text-sm font-medium hover:bg-orange-600 transition-colors"
-          >
-            Record Results
-          </Link>
-        )}
-
         {showGenerateSchedule && (
           <div className="sm:col-span-2">
             <button
@@ -82,6 +91,16 @@ export default function SidebarActionsCard({ data }: Props) {
             } inline-flex items-center justify-center px-3 py-2 border border-zinc-200 text-zinc-700 rounded-full text-sm font-medium hover:bg-zinc-50 transition-colors`}
           >
             Email Members
+          </button>
+        )}
+
+        {showGeneratePlayoffs && (
+          <button
+            onClick={() => onGeneratePlayoffs(8)}
+            disabled={generatingPlayoffs}
+            className="sm:col-span-2 inline-flex items-center justify-center px-3 py-2.5 border border-orange-500 text-orange-500 rounded-full text-sm font-medium hover:bg-orange-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {generatingPlayoffs ? "Generating..." : "Generate Playoffs"}
           </button>
         )}
 

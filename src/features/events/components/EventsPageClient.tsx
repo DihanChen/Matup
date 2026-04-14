@@ -1,30 +1,40 @@
 "use client";
 
-import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import CourtCard from "@/components/CourtCard";
-import EventCard from "@/components/EventCard";
-import MapDynamic from "@/components/map/MapDynamic";
+import { useRouter, useSearchParams } from "next/navigation";
 import { OSM_COURTS_SESSION_KEY } from "@/features/courts/constants";
 import { useOsmCourts } from "@/features/courts/hooks/useOsmCourts";
 import type { BoundingBox, Court, DisplayCourt, OsmCourt } from "@/features/courts/types";
+import ExploreMapView from "@/features/events/components/ExploreMapView";
+import ExploreSwipeView from "@/features/events/components/ExploreSwipeView";
+import {
+  clampSwipeIndex,
+  createInitialSwipeDecks,
+  dismissSwipeDeckItem,
+  getVisibleSwipeItems,
+  isSwipeJoinable,
+  rankSwipeCourts,
+  rankSwipeEvents,
+  type ExploreEvent,
+  type ExploreMode,
+  type SwipeTab,
+} from "@/features/events/lib/exploreSwipe";
 import { haversineDistance } from "@/lib/geo";
 import { getApprovedCourts } from "@/lib/queries/courts";
 import {
   getCurrentUserId,
   getUpcomingEventsWithMetadata,
+  joinEvent,
   type EventWithMetadata,
 } from "@/lib/queries/events";
 import { createClient } from "@/lib/supabase";
 
-type Event = EventWithMetadata & {
-  distance?: number;
-};
+type Event = ExploreEvent;
 
 type UserLocation = {
   lat: number;
   lng: number;
+  accuracy?: number;
 };
 
 const SPORT_FILTERS = [
@@ -39,7 +49,7 @@ const SPORT_FILTERS = [
   { value: "yoga", label: "Yoga" },
   { value: "hiking", label: "Hiking" },
 ];
-const OSM_MARKER_CLUSTER_RADIUS_METERS = 100;
+const OSM_MARKER_CLUSTER_RADIUS_METERS = 150;
 const DEFAULT_OSM_COURT_NAME = "Public Court";
 const NEAR_ME_SEARCH_LAT_DELTA = 0.02;
 
@@ -113,6 +123,12 @@ function toDisplayDbCourt(court: DbCourtRecord): DisplayCourt {
   };
 }
 
+function formatSportLabel(sportTypes: string[]): string {
+  if (sportTypes.length === 0) return "Public";
+  const primary = sportTypes[0];
+  return primary.charAt(0).toUpperCase() + primary.slice(1);
+}
+
 function toOsmImportPayload(court: {
   osm_id: number;
   osm_type: string;
@@ -122,7 +138,8 @@ function toOsmImportPayload(court: {
   sport_types: string[];
   surface: string | null;
 }): OsmCourtImportPayload {
-  const name = court.name.trim() || DEFAULT_OSM_COURT_NAME;
+  const trimmed = court.name.trim();
+  const name = trimmed || `${formatSportLabel(court.sport_types)} Court`;
   return {
     osm_id: court.osm_id,
     osm_type: court.osm_type,
@@ -166,7 +183,8 @@ function mergeOsmCourtsByLocation(courts: OsmCourt[]): OSMAggregateCourt[] {
     const existingCount = existing.osmIds.length;
     existing.osmIds.push(court.osm_id);
     existing.latitude = (existing.latitude * existingCount + court.latitude) / (existingCount + 1);
-    existing.longitude = (existing.longitude * existingCount + court.longitude) / (existingCount + 1);
+    existing.longitude =
+      (existing.longitude * existingCount + court.longitude) / (existingCount + 1);
     existing.sportTypes.add(court.sport);
 
     if (court.osm_id < existing.primaryOsmId) {
@@ -192,12 +210,7 @@ function mergeOsmCourtsByLocation(courts: OsmCourt[]): OSMAggregateCourt[] {
 }
 
 function isPointInBounds(lat: number, lng: number, bounds: BoundingBox): boolean {
-  return (
-    lat >= bounds.south &&
-    lat <= bounds.north &&
-    lng >= bounds.west &&
-    lng <= bounds.east
-  );
+  return lat >= bounds.south && lat <= bounds.north && lng >= bounds.west && lng <= bounds.east;
 }
 
 function areBoundsEqual(a: BoundingBox, b: BoundingBox): boolean {
@@ -224,28 +237,35 @@ function buildNearMeBounds(location: UserLocation): BoundingBox {
   };
 }
 
-export default function EventsPage() {
+function buildLoginRedirectUrl(): string {
+  const params = new URLSearchParams();
+  params.set("message", "Sign in to join an event.");
+  params.set("next", "/events?mode=swipe");
+  return `/login?${params.toString()}`;
+}
+
+export default function EventsPageClient() {
   return (
     <Suspense
       fallback={
-        <div className="h-[calc(100vh-56px)] bg-zinc-50 overflow-hidden animate-pulse">
+        <div className="h-[calc(100dvh-56px)] animate-pulse overflow-hidden bg-zinc-50">
           <div className="flex h-full min-h-0 flex-col lg:flex-row">
-            <div className="w-full lg:w-96 bg-white border-b lg:border-b-0 lg:border-r border-zinc-200 p-5 sm:p-6 space-y-4">
-              <div className="h-8 w-32 bg-zinc-200 rounded-xl" />
-              <div className="h-4 w-56 bg-zinc-100 rounded" />
-              <div className="h-10 w-full bg-zinc-100 rounded-full" />
-              <div className="h-10 w-full bg-zinc-100 rounded-full" />
+            <div className="w-full space-y-4 border-b border-zinc-200 bg-white p-5 sm:p-6 lg:w-96 lg:border-b-0 lg:border-r">
+              <div className="h-8 w-32 rounded-xl bg-zinc-200" />
+              <div className="h-4 w-56 rounded bg-zinc-100" />
+              <div className="h-10 w-full rounded-full bg-zinc-100" />
+              <div className="h-10 w-full rounded-full bg-zinc-100" />
               <div className="space-y-3 pt-2">
                 {[1, 2, 3].map((item) => (
                   <div
                     key={`events-list-skeleton-${item}`}
-                    className="rounded-xl border border-zinc-200 overflow-hidden"
+                    className="overflow-hidden rounded-xl border border-zinc-200"
                   >
                     <div className="h-32 bg-zinc-100" />
-                    <div className="p-4 space-y-2">
-                      <div className="h-3 w-24 bg-zinc-200 rounded" />
-                      <div className="h-4 w-3/4 bg-zinc-200 rounded" />
-                      <div className="h-3 w-1/2 bg-zinc-100 rounded" />
+                    <div className="space-y-2 p-4">
+                      <div className="h-3 w-24 rounded bg-zinc-200" />
+                      <div className="h-4 w-3/4 rounded bg-zinc-200" />
+                      <div className="h-3 w-1/2 rounded bg-zinc-100" />
                     </div>
                   </div>
                 ))}
@@ -262,9 +282,12 @@ export default function EventsPage() {
 }
 
 function EventsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const sportFromUrl = searchParams.get("sport") || "";
   const searchFromUrl = searchParams.get("search") || "";
+  const modeFromUrl = searchParams.get("mode");
+  const exploreMode: ExploreMode = modeFromUrl === "swipe" ? "swipe" : "map";
 
   const [events, setEvents] = useState<Event[]>([]);
   const [dbCourts, setDbCourts] = useState<Court[]>([]);
@@ -273,29 +296,74 @@ function EventsContent() {
   const [loading, setLoading] = useState(true);
   const [sportFilter, setSportFilter] = useState(sportFromUrl);
   const [searchQuery, setSearchQuery] = useState(searchFromUrl);
-  const [activeView, setActiveView] = useState<"events" | "courts">("events");
+  const [activeView, setActiveView] = useState<SwipeTab>("events");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
-  const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">(
+    "idle"
+  );
   const [sortByDistance, setSortByDistance] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
   const [selectedMarkerType, setSelectedMarkerType] = useState<"event" | "court" | null>(null);
+  const [swipeDecks, setSwipeDecks] = useState(() => createInitialSwipeDecks());
+  const [joiningEventId, setJoiningEventId] = useState<string | null>(null);
+  const [swipeError, setSwipeError] = useState<string | null>(null);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchFromUrl);
   const hasAttemptedAutoLocation = useRef(false);
   const hasAutoInitialAreaSearch = useRef(false);
-  const listContainerRef = useRef<HTMLDivElement | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
   const eventRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const courtRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const { osmCourts, loading: osmLoading } = useOsmCourts(searchedBounds, sportFilter);
+  const { osmCourts, loading: osmLoading } = useOsmCourts(
+    searchedBounds,
+    sportFilter,
+    activeView === "courts"
+  );
 
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
     return () => {
       document.body.style.overflow = originalOverflow;
     };
   }, []);
 
-  function handleGetLocation() {
+  useEffect(() => {
+    let isCancelled = false;
+    async function fetchUserId() {
+      const supabase = createClient();
+      const userId = await getCurrentUserId(supabase);
+      if (!isCancelled) {
+        currentUserIdRef.current = userId;
+        setCurrentUserId(userId);
+      }
+    }
+    fetchUserId();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const setExploreMode = useCallback(
+    (nextMode: ExploreMode) => {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.set("mode", nextMode);
+      const query = nextParams.toString();
+
+      router.replace(query ? `/events?${query}` : "/events", { scroll: false });
+    },
+    [router, searchParams]
+  );
+
+  const handleGetLocation = useCallback(() => {
     if (locationStatus === "success") {
       setUserLocation(null);
       setLocationStatus("idle");
@@ -309,9 +377,13 @@ function EventsContent() {
     }
 
     setLocationStatus("loading");
-    navigator.geolocation.getCurrentPosition(
+    const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        };
         setUserLocation(location);
         setLocationStatus("success");
         setSortByDistance(true);
@@ -321,15 +393,66 @@ function EventsContent() {
           if (previous && areBoundsEqual(previous, nearMeBounds)) {
             return previous;
           }
+
           return nearMeBounds;
         });
+
+        if (position.coords.accuracy < 100) {
+          navigator.geolocation.clearWatch(watchId);
+        }
       },
       () => {
         setLocationStatus("error");
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 15000 }
     );
-  }
+
+    const stopTimer = setTimeout(() => {
+      navigator.geolocation.clearWatch(watchId);
+      setLocationStatus((current) => (current === "loading" ? "error" : current));
+    }, 15000);
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      clearTimeout(stopTimer);
+    };
+  }, [locationStatus]);
+
+  const handleActiveViewChange = useCallback(
+    (view: SwipeTab) => {
+      setActiveView(view);
+      setSelectedMarkerId(null);
+      setSelectedMarkerType(null);
+      setSwipeError(null);
+
+      if (view !== "courts") {
+        return;
+      }
+
+      if (userLocation) {
+        const nearMeBounds = buildNearMeBounds(userLocation);
+        setSearchedBounds((previous) => {
+          if (previous && areBoundsEqual(previous, nearMeBounds)) {
+            return previous;
+          }
+
+          return nearMeBounds;
+        });
+        return;
+      }
+
+      if (mapBounds) {
+        setSearchedBounds((previous) => {
+          if (previous && areBoundsEqual(previous, mapBounds)) {
+            return previous;
+          }
+
+          return { ...mapBounds };
+        });
+      }
+    },
+    [mapBounds, userLocation]
+  );
 
   useEffect(() => {
     let isCancelled = false;
@@ -338,18 +461,13 @@ function EventsContent() {
       setLoading(true);
       const supabase = createClient();
 
-      const userId = await getCurrentUserId(supabase);
-      if (!isCancelled) {
-        setCurrentUserId(userId);
-      }
-
       const eventsPromise = searchedBounds
-        ? getUpcomingEventsWithMetadata(supabase, sportFilter, searchedBounds)
+        ? getUpcomingEventsWithMetadata(supabase, sportFilter, searchedBounds, currentUserIdRef.current)
         : Promise.resolve<EventWithMetadata[]>([]);
 
       const [eventsData, courtsData]: [EventWithMetadata[], Court[]] = await Promise.all([
         eventsPromise,
-        getApprovedCourts(supabase, sportFilter),
+        getApprovedCourts(supabase, sportFilter, searchedBounds),
       ]);
 
       if (isCancelled) {
@@ -378,9 +496,13 @@ function EventsContent() {
     }
 
     window.setTimeout(() => setLocationStatus("loading"), 0);
-    navigator.geolocation.getCurrentPosition(
+    const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        };
         setUserLocation(location);
         setLocationStatus("success");
         setSortByDistance(true);
@@ -390,26 +512,47 @@ function EventsContent() {
           if (previous && areBoundsEqual(previous, nearMeBounds)) {
             return previous;
           }
+
           return nearMeBounds;
         });
+
+        if (position.coords.accuracy < 100) {
+          navigator.geolocation.clearWatch(watchId);
+        }
       },
       () => {
         setLocationStatus("error");
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 15000 }
     );
+
+    const stopTimer = setTimeout(() => {
+      navigator.geolocation.clearWatch(watchId);
+      setLocationStatus((current) => (current === "loading" ? "error" : current));
+    }, 15000);
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      clearTimeout(stopTimer);
+    };
   }, []);
 
   const filteredEvents = useMemo(() => {
     if (!searchedBounds) return [];
 
     let result = events.map((event) => {
-      if (userLocation && event.latitude && event.longitude) {
+      if (userLocation && event.latitude != null && event.longitude != null) {
         return {
           ...event,
-          distance: haversineDistance(userLocation.lat, userLocation.lng, event.latitude, event.longitude),
+          distance: haversineDistance(
+            userLocation.lat,
+            userLocation.lng,
+            event.latitude,
+            event.longitude
+          ),
         };
       }
+
       return { ...event, distance: undefined };
     });
 
@@ -418,8 +561,8 @@ function EventsContent() {
       return isPointInBounds(event.latitude, event.longitude, searchedBounds);
     });
 
-    if (searchQuery.trim()) {
-      const queryLower = searchQuery.toLowerCase();
+    if (debouncedSearchQuery.trim()) {
+      const queryLower = debouncedSearchQuery.toLowerCase();
       result = result.filter(
         (event) =>
           event.title.toLowerCase().includes(queryLower) ||
@@ -431,16 +574,16 @@ function EventsContent() {
     }
 
     if (sortByDistance && userLocation) {
-      result.sort((a, b) => {
-        if (a.distance === undefined && b.distance === undefined) return 0;
-        if (a.distance === undefined) return 1;
-        if (b.distance === undefined) return -1;
-        return a.distance - b.distance;
+      result.sort((left, right) => {
+        if (left.distance === undefined && right.distance === undefined) return 0;
+        if (left.distance === undefined) return 1;
+        if (right.distance === undefined) return -1;
+        return left.distance - right.distance;
       });
     }
 
     return result;
-  }, [events, searchQuery, userLocation, sortByDistance, searchedBounds]);
+  }, [events, debouncedSearchQuery, searchedBounds, sortByDistance, userLocation]);
 
   const { mergedCourts, osmImportPayloadById } = useMemo(() => {
     const dbByOsmId = new Map<number, DbCourtRecord>();
@@ -537,15 +680,14 @@ function EventsContent() {
           distance: haversineDistance(userLocation.lat, userLocation.lng, court.latitude, court.longitude),
         };
       }
+
       return { ...court, distance: undefined };
     });
 
-    result = result.filter((court) =>
-      isPointInBounds(court.latitude, court.longitude, searchedBounds)
-    );
+    result = result.filter((court) => isPointInBounds(court.latitude, court.longitude, searchedBounds));
 
-    if (searchQuery.trim()) {
-      const queryLower = searchQuery.toLowerCase();
+    if (debouncedSearchQuery.trim()) {
+      const queryLower = debouncedSearchQuery.toLowerCase();
       result = result.filter(
         (court) =>
           court.name.toLowerCase().includes(queryLower) ||
@@ -555,78 +697,31 @@ function EventsContent() {
     }
 
     if (sortByDistance && userLocation) {
-      result.sort((a, b) => {
-        if (a.distance === undefined && b.distance === undefined) return 0;
-        if (a.distance === undefined) return 1;
-        if (b.distance === undefined) return -1;
-        return a.distance - b.distance;
+      result.sort((left, right) => {
+        if (left.distance === undefined && right.distance === undefined) return 0;
+        if (left.distance === undefined) return 1;
+        if (right.distance === undefined) return -1;
+        return left.distance - right.distance;
       });
     }
 
     return result;
-  }, [mergedCourts, searchQuery, userLocation, sortByDistance, searchedBounds]);
+  }, [mergedCourts, debouncedSearchQuery, searchedBounds, sortByDistance, userLocation]);
 
-  const selectedEvent =
-    selectedMarkerType === "event"
-      ? filteredEvents.find((event) => event.id === selectedMarkerId)
-      : undefined;
-  const selectedCourt =
-    selectedMarkerType === "court"
-      ? filteredCourts.find((court) => court.id === selectedMarkerId)
-      : undefined;
+  const rankedSwipeEvents = useMemo(
+    () => rankSwipeEvents(filteredEvents, currentUserId),
+    [currentUserId, filteredEvents]
+  );
+  const rankedSwipeCourts = useMemo(() => rankSwipeCourts(filteredCourts), [filteredCourts]);
 
-  const mapLat =
-    selectedEvent?.latitude ??
-    selectedCourt?.latitude ??
-    userLocation?.lat ??
-    39.8283;
-  const mapLng =
-    selectedEvent?.longitude ??
-    selectedCourt?.longitude ??
-    userLocation?.lng ??
-    -98.5795;
-  const mapCenter: [number, number] = [mapLat, mapLng];
-  const activeCount = activeView === "events" ? filteredEvents.length : filteredCourts.length;
-  const hasActiveAreaSearch = searchedBounds !== null;
-  const showSearchAreaButton = mapBounds !== null;
-  const canShowEventCount = hasActiveAreaSearch && !loading;
-  const canShowCourtCount = hasActiveAreaSearch && !loading && !osmLoading;
-
-  function handleMarkerClick(id: string) {
-    setSelectedMarkerId(id);
-    setSelectedMarkerType(activeView === "events" ? "event" : "court");
-  }
-
-  function handleSidebarClick(id: string, type: "event" | "court") {
-    setSelectedMarkerId(id);
-    setSelectedMarkerType(type);
-  }
-
-  function handleSearchThisArea() {
-    if (!mapBounds) return;
-    setSearchedBounds({ ...mapBounds });
-    setSelectedMarkerId(null);
-    setSelectedMarkerType(null);
-  }
-
-  const handleMapBoundsChange = useCallback((bounds: BoundingBox) => {
-    setMapBounds((previous) => {
-      if (previous && areBoundsEqual(previous, bounds)) {
-        return previous;
-      }
-      return bounds;
-    });
-
-    if (!hasAutoInitialAreaSearch.current) {
-      hasAutoInitialAreaSearch.current = true;
-      setSearchedBounds((previous) => {
-        if (previous && areBoundsEqual(previous, bounds)) {
-          return previous;
-        }
-        return { ...bounds };
-      });
-    }
-  }, []);
+  const visibleSwipeEvents = useMemo(
+    () => getVisibleSwipeItems(rankedSwipeEvents, swipeDecks.events.dismissedIds),
+    [rankedSwipeEvents, swipeDecks.events.dismissedIds]
+  );
+  const visibleSwipeCourts = useMemo(
+    () => getVisibleSwipeItems(rankedSwipeCourts, swipeDecks.courts.dismissedIds),
+    [rankedSwipeCourts, swipeDecks.courts.dismissedIds]
+  );
 
   useEffect(() => {
     if (!selectedMarkerId || !selectedMarkerType) return;
@@ -643,304 +738,271 @@ function EventsContent() {
       block: "center",
       inline: "nearest",
     });
-  }, [selectedMarkerId, selectedMarkerType, activeView]);
+  }, [activeView, selectedMarkerId, selectedMarkerType]);
+
+  const selectedEvent =
+    selectedMarkerType === "event"
+      ? filteredEvents.find((event) => event.id === selectedMarkerId)
+      : undefined;
+  const selectedCourt =
+    selectedMarkerType === "court"
+      ? filteredCourts.find((court) => court.id === selectedMarkerId)
+      : undefined;
+  const mapLat = selectedEvent?.latitude ?? selectedCourt?.latitude ?? userLocation?.lat ?? 39.8283;
+  const mapLng =
+    selectedEvent?.longitude ?? selectedCourt?.longitude ?? userLocation?.lng ?? -98.5795;
+  const mapCenter: [number, number] = [mapLat, mapLng];
+  const mapZoom = userLocation ? 14 : 4;
+  const hasActiveAreaSearch = searchedBounds !== null;
+  const showSearchAreaButton = mapBounds !== null;
+  const activeCount = activeView === "events" ? filteredEvents.length : filteredCourts.length;
+  const canShowGameCount = hasActiveAreaSearch && !loading;
+  const canShowCourtCount = hasActiveAreaSearch && !loading && !osmLoading;
+
+  const currentEventSwipeIndex = clampSwipeIndex(swipeDecks.events.currentIndex, visibleSwipeEvents.length);
+  const currentCourtSwipeIndex = clampSwipeIndex(swipeDecks.courts.currentIndex, visibleSwipeCourts.length);
+  const currentSwipeEvent = visibleSwipeEvents[currentEventSwipeIndex] ?? null;
+  const currentSwipeCourt = visibleSwipeCourts[currentCourtSwipeIndex] ?? null;
+  const activeSwipeItems = activeView === "events" ? visibleSwipeEvents : visibleSwipeCourts;
+  const activeSwipeIndex = activeView === "events" ? currentEventSwipeIndex : currentCourtSwipeIndex;
+  const hasPreviousSwipeItem = activeSwipeIndex > 0;
+  const hasNextSwipeItem = activeSwipeIndex < activeSwipeItems.length - 1;
+
+  const primaryActionLabel =
+    activeView === "courts"
+      ? "View Court"
+      : currentSwipeEvent && currentUserId && !isSwipeJoinable(currentSwipeEvent, currentUserId)
+      ? "View Details"
+      : "Join Session";
+
+  function handleMarkerClick(id: string) {
+    setSelectedMarkerId(id);
+    setSelectedMarkerType(activeView === "events" ? "event" : "court");
+  }
+
+  function handleSidebarClick(id: string, type: "event" | "court") {
+    setSelectedMarkerId(id);
+    setSelectedMarkerType(type);
+  }
+
+  function handleSearchThisArea() {
+    if (!mapBounds) return;
+
+    setSearchedBounds({ ...mapBounds });
+    setSelectedMarkerId(null);
+    setSelectedMarkerType(null);
+    setSwipeError(null);
+  }
+
+  const handleMapBoundsChange = useCallback((bounds: BoundingBox) => {
+    setMapBounds((previous) => {
+      if (previous && areBoundsEqual(previous, bounds)) {
+        return previous;
+      }
+
+      return bounds;
+    });
+
+    if (!hasAutoInitialAreaSearch.current) {
+      hasAutoInitialAreaSearch.current = true;
+      setSearchedBounds((previous) => {
+        if (previous && areBoundsEqual(previous, bounds)) {
+          return previous;
+        }
+
+        return { ...bounds };
+      });
+    }
+  }, []);
+
+  const handleSwipePrevious = useCallback(() => {
+    setSwipeDecks((previous) => {
+      const deck = previous[activeView];
+      const nextIndex = clampSwipeIndex(deck.currentIndex - 1, activeSwipeItems.length);
+
+      if (nextIndex === deck.currentIndex) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        [activeView]: { ...deck, currentIndex: nextIndex },
+      };
+    });
+  }, [activeSwipeItems.length, activeView]);
+
+  const handleSwipeNext = useCallback(() => {
+    setSwipeDecks((previous) => {
+      const deck = previous[activeView];
+      const nextIndex = clampSwipeIndex(deck.currentIndex + 1, activeSwipeItems.length);
+
+      if (nextIndex === deck.currentIndex) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        [activeView]: { ...deck, currentIndex: nextIndex },
+      };
+    });
+  }, [activeSwipeItems.length, activeView]);
+
+  const handleSkipCurrentSuggestion = useCallback(() => {
+    const currentItemId =
+      activeView === "events" ? currentSwipeEvent?.id ?? null : currentSwipeCourt?.id ?? null;
+
+    if (!currentItemId) {
+      return;
+    }
+
+    setSwipeDecks((previous) => ({
+      ...previous,
+      [activeView]: dismissSwipeDeckItem(previous[activeView], currentItemId, activeSwipeItems.length),
+    }));
+    setSwipeError(null);
+  }, [activeSwipeItems.length, activeView, currentSwipeCourt?.id, currentSwipeEvent?.id]);
+
+  const handleResetSuggestions = useCallback(() => {
+    setSwipeDecks((previous) => ({
+      ...previous,
+      [activeView]: {
+        currentIndex: 0,
+        dismissedIds: new Set<string>(),
+      },
+    }));
+    setSwipeError(null);
+  }, [activeView]);
+
+  const handlePrimarySwipeAction = useCallback(async () => {
+    if (activeView === "courts") {
+      if (currentSwipeCourt) {
+        router.push(`/courts/${currentSwipeCourt.id}`);
+      }
+      return;
+    }
+
+    if (!currentSwipeEvent) {
+      return;
+    }
+
+    if (currentUserId && !isSwipeJoinable(currentSwipeEvent, currentUserId)) {
+      router.push(`/events/${currentSwipeEvent.id}`);
+      return;
+    }
+
+    setSwipeError(null);
+
+    if (!currentUserId) {
+      router.push(buildLoginRedirectUrl());
+      return;
+    }
+
+    setJoiningEventId(currentSwipeEvent.id);
+    const supabase = createClient();
+    const result = await joinEvent(supabase, currentSwipeEvent.id);
+
+    if (result.requiresAuth) {
+      setJoiningEventId(null);
+      router.push(buildLoginRedirectUrl());
+      return;
+    }
+
+    if (result.error || !result.participant) {
+      setSwipeError(result.error || "Failed to join event.");
+      setJoiningEventId(null);
+      return;
+    }
+
+    setCurrentUserId((previous) => previous ?? result.userId);
+    setEvents((previous) =>
+      previous.map((event) =>
+        event.id === currentSwipeEvent.id
+          ? {
+              ...event,
+              participant_count: event.participant_count + 1,
+              is_joined_by_current_user: true,
+            }
+          : event
+      )
+    );
+    setSwipeDecks((previous) => ({
+      ...previous,
+      events: dismissSwipeDeckItem(previous.events, currentSwipeEvent.id, visibleSwipeEvents.length),
+    }));
+    setJoiningEventId(null);
+  }, [
+    activeView,
+    currentSwipeCourt,
+    currentSwipeEvent,
+    currentUserId,
+    router,
+    visibleSwipeEvents.length,
+  ]);
+
+  if (exploreMode === "swipe") {
+    return (
+      <ExploreSwipeView
+        loading={loading || (activeView === "courts" && osmLoading)}
+        activeView={activeView}
+        currentEvent={currentSwipeEvent}
+        currentCourt={currentSwipeCourt}
+        hasPrevious={hasPreviousSwipeItem}
+        hasNext={hasNextSwipeItem}
+        primaryActionLabel={primaryActionLabel}
+        primaryActionLoading={joiningEventId === currentSwipeEvent?.id}
+        primaryActionDisabled={
+          activeView === "events"
+            ? !currentSwipeEvent || joiningEventId === currentSwipeEvent.id
+            : !currentSwipeCourt
+        }
+        error={swipeError}
+        hasActiveAreaSearch={hasActiveAreaSearch}
+        onActiveViewChange={handleActiveViewChange}
+        onPrevious={handleSwipePrevious}
+        onNext={handleSwipeNext}
+        onSkip={handleSkipCurrentSuggestion}
+        onPrimaryAction={handlePrimarySwipeAction}
+        onResetSuggestions={handleResetSuggestions}
+        onOpenMapView={() => setExploreMode("map")}
+      />
+    );
+  }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)] overflow-hidden">
-      <div className="flex-1 flex min-h-0 flex-col lg:flex-row">
-        <aside className="w-full lg:w-96 flex-1 lg:flex-none bg-white border-b lg:border-b-0 lg:border-r border-zinc-200 flex flex-col overflow-hidden min-h-0">
-          <div className="px-5 pt-8 pb-0 flex-shrink-0">
-            <div className="mb-5">
-              <h1 className="text-3xl font-bold text-zinc-900">Nearby</h1>
-              <p className="text-zinc-400 text-sm mt-1">
-                {loading
-                  ? "Searching..."
-                  : hasActiveAreaSearch
-                    ? `Found ${activeCount} matches in this area`
-                    : "Move the map and search this area"}
-              </p>
-            </div>
-
-            <div className="relative mb-4">
-              <svg
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search sport, venue, host..."
-                className="w-full pl-12 pr-4 py-3 rounded-full bg-zinc-100 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:bg-white transition-all"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 pb-4">
-              <div className="relative flex-1">
-                <select
-                  value={sportFilter}
-                  onChange={(e) => setSportFilter(e.target.value)}
-                  className="w-full appearance-none px-4 py-2.5 pr-10 rounded-full text-sm font-medium bg-zinc-100 text-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:bg-white cursor-pointer"
-                >
-                  {SPORT_FILTERS.map((sport) => (
-                    <option key={sport.value} value={sport.value}>
-                      {sport.label}
-                    </option>
-                  ))}
-                </select>
-                <svg
-                  className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
-                </svg>
-              </div>
-              <button
-                onClick={handleGetLocation}
-                disabled={locationStatus === "loading"}
-                className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-1 ${
-                  locationStatus === "success"
-                    ? "bg-orange-500 text-white"
-                    : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
-                }`}
-              >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"
-                  />
-                </svg>
-                {locationStatus === "loading" ? "..." : "Near Me"}
-              </button>
-            </div>
-
-            <div className="pb-4">
-              <div className="bg-zinc-100 rounded-full p-1 flex gap-1">
-                <button
-                  onClick={() => {
-                    setActiveView("events");
-                    setSelectedMarkerId(null);
-                    setSelectedMarkerType(null);
-                  }}
-                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-full transition-all ${
-                    activeView === "events"
-                      ? "bg-zinc-900 text-white"
-                      : "bg-zinc-100 text-zinc-500"
-                  }`}
-                >
-                  {canShowEventCount ? `Events (${filteredEvents.length})` : "Events"}
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveView("courts");
-                    setSelectedMarkerId(null);
-                    setSelectedMarkerType(null);
-
-                    if (userLocation) {
-                      const nearMeBounds = buildNearMeBounds(userLocation);
-                      setSearchedBounds((previous) => {
-                        if (previous && areBoundsEqual(previous, nearMeBounds)) {
-                          return previous;
-                        }
-                        return nearMeBounds;
-                      });
-                    } else if (mapBounds) {
-                      setSearchedBounds((previous) => {
-                        if (previous && areBoundsEqual(previous, mapBounds)) {
-                          return previous;
-                        }
-                        return { ...mapBounds };
-                      });
-                    }
-                  }}
-                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-full transition-all ${
-                    activeView === "courts"
-                      ? "bg-zinc-900 text-white"
-                      : "bg-zinc-100 text-zinc-500"
-                  }`}
-                >
-                  {canShowCourtCount ? `Courts (${filteredCourts.length})` : "Courts"}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div ref={listContainerRef} className="flex-1 overflow-y-auto px-5 pb-5 space-y-4 scrollbar-hide">
-            {loading ? (
-              [1, 2, 3].map((i) => (
-                <div key={i} className="rounded-xl border border-zinc-200 animate-pulse overflow-hidden">
-                  <div className="h-40 bg-zinc-100" />
-                  <div className="p-4 space-y-2">
-                    <div className="h-3 bg-zinc-200 rounded w-24" />
-                    <div className="h-4 bg-zinc-200 rounded w-3/4" />
-                    <div className="h-3 bg-zinc-200 rounded w-1/2" />
-                  </div>
-                </div>
-              ))
-            ) : !hasActiveAreaSearch ? (
-              <div className="text-center py-12">
-                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-zinc-100 flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 text-zinc-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-zinc-900 mb-1">Search this area</p>
-                <p className="text-xs text-zinc-400">Pan or zoom the map, then tap &quot;Search this area&quot;.</p>
-              </div>
-            ) : activeView === "events" ? (
-              filteredEvents.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-zinc-100 flex items-center justify-center">
-                    <svg
-                      className="w-5 h-5 text-zinc-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-sm font-medium text-zinc-900 mb-1">No events found</p>
-                  <p className="text-xs text-zinc-400 mb-4">
-                    {searchQuery
-                      ? "Try a different search"
-                      : "Try a different sport or create the first one!"}
-                  </p>
-                  <Link
-                    href="/events/create"
-                    className="inline-block px-4 py-2 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800"
-                  >
-                    Create Event
-                  </Link>
-                </div>
-              ) : (
-                filteredEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    ref={(node) => {
-                      eventRowRefs.current[event.id] = node;
-                    }}
-                    onClick={() => handleSidebarClick(event.id, "event")}
-                    className={`rounded-xl ${
-                      selectedMarkerType === "event" && selectedMarkerId === event.id
-                        ? "ring-2 ring-orange-500"
-                        : ""
-                    }`}
-                  >
-                    <EventCard event={event} currentUserId={currentUserId} />
-                  </div>
-                ))
-              )
-            ) : filteredCourts.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-zinc-100 flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 text-zinc-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"
-                    />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-zinc-900 mb-1">No courts found</p>
-                <p className="text-xs text-zinc-400 mb-4">
-                  {searchQuery
-                    ? "Try a different search"
-                    : "Be the first to submit a court near you."}
-                </p>
-                <Link
-                  href="/courts/create"
-                  className="inline-block px-4 py-2 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800"
-                >
-                  Submit Court
-                </Link>
-              </div>
-            ) : (
-              filteredCourts.map((court) => (
-                <div
-                  key={court.id}
-                  ref={(node) => {
-                    courtRowRefs.current[court.id] = node;
-                  }}
-                >
-                  <CourtCard
-                    court={court}
-                    onSelect={(id) => handleSidebarClick(id, "court")}
-                    isSelected={selectedMarkerType === "court" && selectedMarkerId === court.id}
-                  />
-                </div>
-              ))
-            )}
-          </div>
-        </aside>
-
-        <div className="relative h-52 sm:h-64 lg:h-auto lg:flex-1 flex-shrink-0">
-          <MapDynamic
-            events={filteredEvents}
-            courts={filteredCourts}
-            userLocation={userLocation}
-            center={mapCenter}
-            zoom={userLocation ? 14 : 4}
-            selectedId={selectedMarkerId}
-            onMarkerClick={handleMarkerClick}
-            activeView={activeView}
-            onBoundsChange={handleMapBoundsChange}
-          />
-          {showSearchAreaButton ? (
-            <div className="pointer-events-none absolute left-1/2 top-3 z-[500] -translate-x-1/2">
-              <button
-                type="button"
-                onClick={handleSearchThisArea}
-                disabled={loading || osmLoading}
-                className="pointer-events-auto rounded-full bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-lg ring-1 ring-zinc-200 transition hover:bg-zinc-50 disabled:opacity-60"
-              >
-                {osmLoading ? "Searching..." : "Search this area"}
-              </button>
-            </div>
-          ) : null}
-        </div>
-      </div>
+    <div className="flex h-[calc(100dvh-56px)] flex-col overflow-hidden">
+      <ExploreMapView
+        loading={loading}
+        osmLoading={osmLoading}
+        searchQuery={searchQuery}
+        sportFilter={sportFilter}
+        sportFilters={SPORT_FILTERS}
+        locationStatus={locationStatus}
+        activeView={activeView}
+        filteredEvents={filteredEvents}
+        filteredCourts={filteredCourts}
+        currentUserId={currentUserId}
+        userLocation={userLocation}
+        mapCenter={mapCenter}
+        mapZoom={mapZoom}
+        selectedMarkerId={selectedMarkerId}
+        selectedMarkerType={selectedMarkerType}
+        hasActiveAreaSearch={hasActiveAreaSearch}
+        showSearchAreaButton={showSearchAreaButton}
+        canShowGameCount={canShowGameCount}
+        canShowCourtCount={canShowCourtCount}
+        activeCount={activeCount}
+        eventRowRefs={eventRowRefs}
+        courtRowRefs={courtRowRefs}
+        onSearchQueryChange={setSearchQuery}
+        onSportFilterChange={setSportFilter}
+        onGetLocation={handleGetLocation}
+        onActiveViewChange={handleActiveViewChange}
+        onSidebarClick={handleSidebarClick}
+        onMarkerClick={handleMarkerClick}
+        onSearchThisArea={handleSearchThisArea}
+        onMapBoundsChange={handleMapBoundsChange}
+        onOpenSwipeView={() => setExploreMode("swipe")}
+      />
     </div>
   );
 }

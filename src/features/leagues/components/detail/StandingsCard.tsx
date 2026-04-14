@@ -2,12 +2,94 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import type { Standing } from "@/lib/league-types";
 import type { LeagueDetailContentProps } from "@/features/leagues/components/detail/types";
 import { getInitials } from "@/lib/league-utils";
 
 type Props = {
   data: LeagueDetailContentProps;
 };
+
+function MovementIndicator({ current, previous }: { current: number; previous: number | null | undefined }) {
+  if (previous == null) return null;
+  const diff = previous - current;
+  if (diff === 0) return <span className="text-zinc-400 text-xs">&#8211;</span>;
+  if (diff > 0) {
+    return (
+      <span className="inline-flex items-center text-emerald-600 text-xs font-medium">
+        <svg className="w-3 h-3 mr-0.5" viewBox="0 0 12 12" fill="currentColor"><path d="M6 2l4 5H2z" /></svg>
+        {diff}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center text-red-500 text-xs font-medium">
+      <svg className="w-3 h-3 mr-0.5" viewBox="0 0 12 12" fill="currentColor"><path d="M6 10l4-5H2z" /></svg>
+      {Math.abs(diff)}
+    </span>
+  );
+}
+
+function StreakBadge({ streak }: { streak: number | undefined }) {
+  if (!streak || streak === 0) return null;
+  const isWin = streak > 0;
+  const count = Math.abs(streak);
+  if (count < 2) return null;
+  return (
+    <span
+      className={`ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold leading-none ${
+        isWin
+          ? "bg-emerald-100 text-emerald-700"
+          : "bg-red-100 text-red-600"
+      }`}
+    >
+      {isWin ? "W" : "L"}{count}
+    </span>
+  );
+}
+
+function FormDots({ form }: { form: Array<"W" | "L" | "D"> | undefined }) {
+  if (!form || form.length === 0) return null;
+  return (
+    <div className="flex items-center gap-0.5">
+      {form.map((result, i) => (
+        <span
+          key={i}
+          className={`w-2 h-2 rounded-full ${
+            result === "W"
+              ? "bg-emerald-500"
+              : result === "L"
+              ? "bg-red-400"
+              : "bg-zinc-300"
+          }`}
+          title={result === "W" ? "Win" : result === "L" ? "Loss" : "Draw"}
+        />
+      ))}
+    </div>
+  );
+}
+
+function getTiebreakerText(scoringFormat: string, isRacketLeague: boolean): string | null {
+  if (scoringFormat === "team_vs_team") {
+    return "Sorted by points, then goal difference, then wins";
+  }
+  if (isRacketLeague || scoringFormat === "singles" || scoringFormat === "doubles") {
+    return "Sorted by wins, then fewest losses";
+  }
+  if (scoringFormat === "individual_time") {
+    return "Sorted by total time (fastest first)";
+  }
+  if (scoringFormat === "individual_points") {
+    return "Sorted by total points, then matches played";
+  }
+  return null;
+}
+
+function hasStreakOrForm(standings: Standing[]): boolean {
+  return standings.some(
+    (s) => (s.streak && Math.abs(s.streak) >= 2) || (s.form && s.form.length > 0)
+  );
+}
 
 export default function StandingsCard({ data }: Props) {
   const {
@@ -18,7 +100,11 @@ export default function StandingsCard({ data }: Props) {
     standings,
     teamStandings,
     hasRecentResults,
+    currentUserId,
   } = data;
+
+  const showFormColumn = hasStreakOrForm(standings);
+  const tiebreakerText = getTiebreakerText(league.scoring_format, isRacketLeague);
 
   return (
     <div
@@ -26,9 +112,11 @@ export default function StandingsCard({ data }: Props) {
         hasRecentResults ? "md:col-span-7" : "md:col-span-12"
       } bg-white rounded-2xl border border-zinc-200 p-4 sm:p-6`}
     >
-      <h2 className="text-lg font-semibold text-zinc-900 mb-4">
-        {isDoubles ? "Team Standings" : "Standings"}
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-zinc-900">
+          {isDoubles ? "Team Standings" : "Standings"}
+        </h2>
+      </div>
 
       {isDoubles && teamStandings.length > 0 ? (
         <div className="overflow-x-auto">
@@ -88,12 +176,31 @@ export default function StandingsCard({ data }: Props) {
                     ? "Progress"
                     : "Pts"}
                 </th>
+                {showFormColumn && (
+                  <th className="text-center py-2 px-2 text-zinc-500 font-medium">Form</th>
+                )}
               </tr>
             </thead>
             <tbody>
-              {standings.map((s) => (
-                <tr key={s.user_id} className="border-b border-zinc-100 last:border-0">
-                  <td className="py-2 px-2 font-medium text-zinc-900">{s.rank}</td>
+              {standings.map((s) => {
+                const isCurrentUser = s.user_id === currentUserId;
+                return (
+                <tr
+                  key={s.user_id}
+                  className={`border-b border-zinc-100 last:border-0 ${
+                    isCurrentUser
+                      ? "bg-orange-50 ring-1 ring-inset ring-orange-200"
+                      : s.rank <= 3 && s.played > 0
+                      ? "bg-orange-50/40"
+                      : ""
+                  }`}
+                >
+                  <td className="py-2 px-2">
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium text-zinc-900 w-4">{s.rank}</span>
+                      <MovementIndicator current={s.rank} previous={s.previousRank} />
+                    </div>
+                  </td>
                   <td className="py-2 px-2">
                     <Link href={`/users/${s.user_id}`} className="flex items-center gap-2 hover:text-orange-500">
                       {s.avatar_url ? (
@@ -104,6 +211,7 @@ export default function StandingsCard({ data }: Props) {
                         </div>
                       )}
                       <span className="font-medium text-zinc-900">{s.name || "Anonymous"}</span>
+                      <StreakBadge streak={s.streak} />
                     </Link>
                   </td>
                   <td className="py-2 px-2 text-center text-zinc-600">{s.played}</td>
@@ -130,8 +238,16 @@ export default function StandingsCard({ data }: Props) {
                       ? `${s.points > 0 ? "+" : ""}${s.points.toFixed(1)}%`
                       : s.points}
                   </td>
+                  {showFormColumn && (
+                    <td className="py-2 px-2">
+                      <div className="flex justify-center">
+                        <FormDots form={s.form} />
+                      </div>
+                    </td>
+                  )}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -141,6 +257,10 @@ export default function StandingsCard({ data }: Props) {
         <p className="text-zinc-500 text-center py-4">
           No results yet. Record matches to see standings.
         </p>
+      )}
+
+      {tiebreakerText && standings.length > 0 && (
+        <p className="text-xs text-zinc-400 mt-3 text-center">{tiebreakerText}</p>
       )}
 
       {isDoubles && teamStandings.length > 0 && standings.length > 0 && (
@@ -156,12 +276,20 @@ export default function StandingsCard({ data }: Props) {
                   <th className="text-center py-2 px-2 text-zinc-500 font-medium">W</th>
                   <th className="text-center py-2 px-2 text-zinc-500 font-medium">L</th>
                   <th className="text-center py-2 px-2 text-zinc-500 font-medium">Win%</th>
+                  {showFormColumn && (
+                    <th className="text-center py-2 px-2 text-zinc-500 font-medium">Form</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {standings.map((s) => (
                   <tr key={s.user_id} className="border-b border-zinc-100 last:border-0">
-                    <td className="py-2 px-2 font-medium text-zinc-900">{s.rank}</td>
+                    <td className="py-2 px-2">
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium text-zinc-900 w-4">{s.rank}</span>
+                        <MovementIndicator current={s.rank} previous={s.previousRank} />
+                      </div>
+                    </td>
                     <td className="py-2 px-2">
                       <Link href={`/users/${s.user_id}`} className="flex items-center gap-2 hover:text-orange-500">
                         {s.avatar_url ? (
@@ -170,6 +298,7 @@ export default function StandingsCard({ data }: Props) {
                           <div className="w-6 h-6 rounded-full bg-zinc-300 text-white text-xs flex items-center justify-center font-medium">{getInitials(s.name)}</div>
                         )}
                         <span className="font-medium text-zinc-900">{s.name || "Anonymous"}</span>
+                        <StreakBadge streak={s.streak} />
                       </Link>
                     </td>
                     <td className="py-2 px-2 text-center text-zinc-600">{s.played}</td>
@@ -178,6 +307,13 @@ export default function StandingsCard({ data }: Props) {
                     <td className="py-2 px-2 text-center font-bold text-orange-500">
                       {s.played > 0 ? `${Math.round((s.wins / s.played) * 100)}%` : "0%"}
                     </td>
+                    {showFormColumn && (
+                      <td className="py-2 px-2">
+                        <div className="flex justify-center">
+                          <FormDots form={s.form} />
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

@@ -26,6 +26,7 @@ interface EventCardProps {
   onJoin?: (eventId: string) => void;
   showHostBadge?: boolean;
   currentUserId?: string | null;
+  isJoined?: boolean;
   compact?: boolean;
 }
 
@@ -48,7 +49,15 @@ function formatDistance(km: number): string {
   return `${km.toFixed(1)} MILES`;
 }
 
-export default function EventCard({ event, variant = "default", onJoin, showHostBadge, currentUserId, compact = false }: EventCardProps) {
+export default function EventCard({
+  event,
+  variant = "default",
+  onJoin,
+  showHostBadge,
+  currentUserId,
+  isJoined = false,
+  compact = false,
+}: EventCardProps) {
   const [erroredCoverKey, setErroredCoverKey] = useState<string | null>(null);
   const fallbackCover = COVER_FALLBACKS[event.sport_type] || "/covers/gym.jpg";
   const customCover = typeof event.cover_url === "string" ? event.cover_url.trim() : "";
@@ -207,6 +216,10 @@ export default function EventCard({ event, variant = "default", onJoin, showHost
             >
               View
             </Link>
+          ) : isJoined ? (
+            <span className={`${compact ? "px-3 py-1 text-[10px]" : "px-4 py-1.5 text-xs"} bg-emerald-100 text-emerald-700 font-medium rounded-full`}>
+              Joined
+            </span>
           ) : isFull ? (
             <span className={`${compact ? "px-3 py-1 text-[10px]" : "px-4 py-1.5 text-xs"} bg-zinc-100 text-zinc-500 font-medium rounded-full`}>
               Full

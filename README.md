@@ -104,10 +104,12 @@ Create `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+NEXT_PUBLIC_MAP_STYLE_URL=https://api.maptiler.com/maps/dataviz-light/style.json?key=YOUR_MAPTILER_KEY
 ```
 
 Notes:
 - `NEXT_PUBLIC_API_BASE_URL` must point to the deployed backend in production.
+- `NEXT_PUBLIC_MAP_STYLE_URL` should point to a production vector style JSON (MapTiler works well with the new MapLibre-based explore map).
 - Do not expose server-only secrets in client environment files.
 
 ## Local Development

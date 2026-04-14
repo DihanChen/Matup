@@ -124,6 +124,10 @@ export default function EventDetailSidebar({
           <div className="text-center py-4">
             <p className="text-zinc-500 font-medium">This event is full</p>
           </div>
+        ) : isPastEvent ? (
+          <div className="text-center py-4">
+            <p className="text-zinc-500 font-medium">This event has ended</p>
+          </div>
         ) : (
           <div className="space-y-3">
             <button onClick={user ? onOpenJoinModal : onLoginRedirect} disabled={joining}

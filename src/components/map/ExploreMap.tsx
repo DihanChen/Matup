@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import Map, { Marker, NavigationControl, type MapRef } from "react-map-gl/maplibre";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import type { BoundingBox, DisplayCourt } from "@/features/courts/types";
 import type { EventWithMetadata } from "@/lib/queries/events";
+import { formatShortAddress } from "@/lib/formatAddress";
+import { getMapStyleUrl, hasConfiguredMapStyle } from "@/lib/map-config";
+import { getSportEmoji } from "@/lib/share/sportEmojis";
 
 type ExploreEvent = EventWithMetadata & {
   distance?: number;
@@ -14,7 +17,7 @@ type ExploreEvent = EventWithMetadata & {
 type ExploreMapProps = {
   events: ExploreEvent[];
   courts: DisplayCourt[];
-  userLocation: { lat: number; lng: number } | null;
+  userLocation: { lat: number; lng: number; accuracy?: number } | null;
   center: [number, number];
   zoom: number;
   selectedId: string | null;
@@ -23,49 +26,107 @@ type ExploreMapProps = {
   onBoundsChange?: (bounds: BoundingBox) => void;
 };
 
-const eventIcon = L.divIcon({
-  className: "custom-event-marker-default",
-  html: `<div style="width:32px;height:32px;border-radius:9999px;background:#a1a1aa;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-  popupAnchor: [0, -16],
+type MarkerButtonProps = {
+  accentClassName: string;
+  emoji: string;
+  subtitle: string;
+  title: string;
+  selected: boolean;
+  onClick: () => void;
+};
+
+const MarkerButton = memo(function MarkerButton({
+  accentClassName,
+  emoji,
+  subtitle,
+  title,
+  selected,
+  onClick,
+}: MarkerButtonProps) {
+  if (selected) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="group rounded-full bg-zinc-950 pl-2 pr-3 py-2 text-left text-white shadow-[0_12px_30px_rgba(15,23,42,0.28)] ring-1 ring-white/15 transition-transform hover:scale-[1.02]"
+      >
+        <span className="flex items-center gap-2">
+          <span
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 text-lg ${accentClassName}`}
+          >
+            {emoji}
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+              {subtitle}
+            </span>
+            <span className="block max-w-44 truncate text-sm font-semibold">{title}</span>
+          </span>
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex h-11 w-11 items-center justify-center rounded-full border border-white/80 text-lg shadow-[0_10px_24px_rgba(15,23,42,0.16)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.22)] ${accentClassName}`}
+    >
+      {emoji}
+    </button>
+  );
 });
 
-const eventSelectedIcon = L.divIcon({
-  className: "custom-event-marker-selected",
-  html: `<div style="width:32px;height:32px;border-radius:9999px;background:#f97316;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-  popupAnchor: [0, -16],
+const UserLocationMarker = memo(function UserLocationMarker({ accuracy }: { accuracy?: number }) {
+  return (
+    <span className="relative flex h-4 w-4 items-center justify-center">
+      {accuracy && accuracy > 200 && (
+        <span
+          className="absolute rounded-full bg-sky-400/10 border border-sky-400/20"
+          style={{ width: `${Math.min(120, accuracy / 10)}px`, height: `${Math.min(120, accuracy / 10)}px` }}
+        />
+      )}
+      <span className="absolute inline-flex h-full w-full rounded-full bg-sky-400/40 animate-ping" />
+      <span className="relative inline-flex h-4 w-4 rounded-full border-2 border-white bg-sky-500 shadow-[0_0_0_6px_rgba(14,165,233,0.16)]" />
+    </span>
+  );
 });
 
-const courtIcon = L.divIcon({
-  className: "custom-court-marker-default",
-  html: `<div style="width:32px;height:32px;border-radius:9999px;background:#a1a1aa;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.25);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10.5c0 7.142-9 11.25-9 11.25S3 17.642 3 10.5a9 9 0 1 1 18 0Z"></path><circle cx="12" cy="10.5" r="3"></circle></svg></div>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-  popupAnchor: [0, -16],
-});
-
-const courtSelectedIcon = L.divIcon({
-  className: "custom-court-marker-selected",
-  html: `<div style="width:32px;height:32px;border-radius:9999px;background:#f97316;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.25);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10.5c0 7.142-9 11.25-9 11.25S3 17.642 3 10.5a9 9 0 1 1 18 0Z"></path><circle cx="12" cy="10.5" r="3"></circle></svg></div>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-  popupAnchor: [0, -16],
-});
-
-const userIcon = L.divIcon({
-  className: "custom-user-marker",
-  html: `<span style="position:relative;display:block;width:16px;height:16px;"><style>@keyframes matup-user-pulse{0%{transform:scale(1);opacity:.9;}70%{transform:scale(2);opacity:0;}100%{transform:scale(2);opacity:0;}}</style><span style="position:absolute;inset:0;border-radius:9999px;background:rgba(59,130,246,.45);animation:matup-user-pulse 1.6s ease-out infinite;"></span><span style="position:absolute;inset:0;border-radius:9999px;background:#3b82f6;border:2px solid #fff;"></span></span>`,
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
-  popupAnchor: [0, -8],
-});
-
-function FlyTo({ center, zoom }: { center: [number, number]; zoom: number }) {
-  const map = useMap();
+export default function ExploreMap({
+  events,
+  courts,
+  userLocation,
+  center,
+  zoom,
+  selectedId,
+  onMarkerClick,
+  activeView,
+  onBoundsChange,
+}: ExploreMapProps) {
+  const mapRef = useRef<MapRef | null>(null);
   const previousRef = useRef<{ lat: number; lng: number; zoom: number } | null>(null);
+  const flyToTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const configuredStyle = useMemo(() => hasConfiguredMapStyle(), []);
+  const styleUrl = useMemo(() => getMapStyleUrl(), []);
+
+  const emitBoundsChange = useCallback(() => {
+    if (!onBoundsChange || !mapRef.current) {
+      return;
+    }
+
+    const bounds = mapRef.current.getBounds();
+    if (!bounds) {
+      return;
+    }
+
+    onBoundsChange({
+      south: bounds.getSouth(),
+      west: bounds.getWest(),
+      north: bounds.getNorth(),
+      east: bounds.getEast(),
+    });
+  }, [onBoundsChange]);
 
   useEffect(() => {
     const [lat, lng] = center;
@@ -81,95 +142,128 @@ function FlyTo({ center, zoom }: { center: [number, number]; zoom: number }) {
       Math.abs(previous.lng - lng) > 0.00001 ||
       previous.zoom !== zoom;
 
-    if (!movedEnough) {
+    if (!movedEnough || !mapRef.current) {
       return;
     }
 
-    previousRef.current = { lat, lng, zoom };
-    map.flyTo([lat, lng], zoom, { duration: 0.8 });
-  }, [map, center, zoom]);
-
-  return null;
-}
-
-function BoundsTracker({ onBoundsChange }: { onBoundsChange: (bounds: BoundingBox) => void }) {
-  const map = useMap();
-
-  useEffect(() => {
-    function handleMoveEnd() {
-      const bounds = map.getBounds();
-      onBoundsChange({
-        south: bounds.getSouth(),
-        west: bounds.getWest(),
-        north: bounds.getNorth(),
-        east: bounds.getEast(),
-      });
+    if (flyToTimerRef.current) {
+      clearTimeout(flyToTimerRef.current);
     }
 
-    map.on("moveend", handleMoveEnd);
-    handleMoveEnd();
+    const map = mapRef.current.getMap();
+    if (map) {
+      map.stop();
+    }
+
+    previousRef.current = { lat, lng, zoom };
+
+    flyToTimerRef.current = setTimeout(() => {
+      flyToTimerRef.current = null;
+      if (mapRef.current) {
+        mapRef.current.flyTo({
+          center: [lng, lat],
+          zoom,
+          duration: 900,
+          essential: true,
+        });
+      }
+    }, 150);
 
     return () => {
-      map.off("moveend", handleMoveEnd);
+      if (flyToTimerRef.current) {
+        clearTimeout(flyToTimerRef.current);
+        flyToTimerRef.current = null;
+      }
     };
-  }, [map, onBoundsChange]);
+  }, [center, zoom]);
 
-  return null;
-}
-
-export default function ExploreMap({
-  events,
-  courts,
-  userLocation,
-  center,
-  zoom,
-  selectedId,
-  onMarkerClick,
-  activeView,
-  onBoundsChange,
-}: ExploreMapProps) {
   return (
-    <MapContainer center={center} zoom={zoom} scrollWheelZoom className="absolute inset-0 h-full w-full z-0">
-      <FlyTo center={center} zoom={zoom} />
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      {onBoundsChange ? <BoundsTracker onBoundsChange={onBoundsChange} /> : null}
+    <div className="absolute inset-0">
+      <Map
+        ref={mapRef}
+        mapLib={maplibregl}
+        initialViewState={{
+          latitude: center[0],
+          longitude: center[1],
+          zoom,
+        }}
+        mapStyle={styleUrl}
+        minZoom={2}
+        maxZoom={18}
+        reuseMaps
+        attributionControl={false}
+        scrollZoom
+        dragRotate={false}
+        onMoveEnd={emitBoundsChange}
+        onLoad={emitBoundsChange}
+        style={{ width: "100%", height: "100%" }}
+      >
+        <NavigationControl position="bottom-right" showCompass={false} />
 
-      {activeView === "events" &&
-        events
-          .filter((event) => event.latitude !== null && event.longitude !== null)
-          .map((event) => (
-            <Marker
-              key={event.id}
-              position={[event.latitude as number, event.longitude as number]}
-              icon={selectedId === event.id ? eventSelectedIcon : eventIcon}
-              opacity={selectedId && selectedId !== event.id ? 0.85 : 1}
-              zIndexOffset={selectedId === event.id ? 1000 : 0}
-              eventHandlers={{
-                click: () => onMarkerClick(event.id),
-              }}
-            />
-          ))}
+        {activeView === "events" &&
+          events
+            .filter((event) => event.latitude !== null && event.longitude !== null)
+            .map((event) => {
+              const selected = selectedId === event.id;
 
-      {activeView === "courts" &&
-        courts.map((court) => (
-          <Marker
-            key={court.id}
-            position={[court.latitude, court.longitude]}
-            icon={selectedId === court.id ? courtSelectedIcon : courtIcon}
-            opacity={selectedId && selectedId !== court.id ? 0.85 : 1}
-            zIndexOffset={selectedId === court.id ? 1000 : 0}
-            eventHandlers={{
-              click: () => onMarkerClick(court.id),
-            }}
-          />
-        ))}
+              return (
+                <Marker
+                  key={event.id}
+                  latitude={event.latitude as number}
+                  longitude={event.longitude as number}
+                  anchor="bottom"
+                >
+                  <MarkerButton
+                    accentClassName={
+                      selected
+                        ? "bg-orange-500 text-white"
+                        : "bg-white/95 text-zinc-900 ring-1 ring-zinc-200"
+                    }
+                    emoji={getSportEmoji(event.sport_type)}
+                    subtitle={event.sport_type}
+                    title={event.title}
+                    selected={selected}
+                    onClick={() => onMarkerClick(event.id)}
+                  />
+                </Marker>
+              );
+            })}
 
-      {userLocation && (
-        <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon} zIndexOffset={1200} />
-      )}
-    </MapContainer>
+        {activeView === "courts" &&
+          courts.map((court) => {
+            const selected = selectedId === court.id;
+            const subtitle = court.sport_types.slice(0, 2).join(" / ") || "Court";
+
+            return (
+              <Marker key={court.id} latitude={court.latitude} longitude={court.longitude} anchor="bottom">
+                <MarkerButton
+                  accentClassName={
+                    selected
+                      ? "bg-emerald-500 text-white"
+                      : "bg-white/95 text-zinc-900 ring-1 ring-zinc-200"
+                  }
+                  emoji={getSportEmoji(court.sport_types[0] || "other")}
+                  subtitle={subtitle}
+                  title={court.name || formatShortAddress(court.address)}
+                  selected={selected}
+                  onClick={() => onMarkerClick(court.id)}
+                />
+              </Marker>
+            );
+          })}
+
+        {userLocation ? (
+          <Marker latitude={userLocation.lat} longitude={userLocation.lng} anchor="center">
+            <UserLocationMarker accuracy={userLocation.accuracy} />
+          </Marker>
+        ) : null}
+      </Map>
+
+      {!configuredStyle ? (
+        <div className="pointer-events-none absolute left-4 top-4 z-10 max-w-64 rounded-2xl bg-white/92 px-3 py-2 text-xs text-zinc-600 shadow-lg ring-1 ring-zinc-200 backdrop-blur">
+          Using the demo MapLibre style. Set <code>NEXT_PUBLIC_MAP_STYLE_URL</code> for your production map style.
+        </div>
+      ) : null}
+    </div>
   );
 }

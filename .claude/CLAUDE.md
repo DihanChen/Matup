@@ -7,8 +7,9 @@ Fitness partner matching web app. Users discover and create sports events, manag
 ## Stack
 
 - Next.js 16 (App Router), React 19, TypeScript (strict), Tailwind CSS v4
-- Supabase client for auth, database, and storage
-- html2canvas for event share image generation
+- `@supabase/supabase-js` + `@supabase/ssr` for auth, database, and storage
+- `maplibre-gl` + `react-map-gl` for interactive maps
+- `html2canvas` for event share image generation
 - Path alias: `@/*` maps to `src/*`
 
 ## Project Structure
@@ -20,6 +21,9 @@ src/
 │   ├── page.tsx                      # Landing page
 │   ├── globals.css                   # Tailwind theme + custom utilities
 │   │
+│   ├── auth/callback/                # Supabase OAuth callback (Google SSO)
+│   ├── api/push/                     # Web Push API routes (subscribe, unsubscribe, send, vapid-public-key)
+│   │
 │   ├── login/page.tsx                # Sign in
 │   ├── signup/page.tsx               # Create account
 │   ├── forgot-password/page.tsx      # Request password reset
@@ -29,6 +33,10 @@ src/
 │   ├── profile/page.tsx              # Profile settings + avatar upload
 │   ├── friends/page.tsx              # Friend requests and list
 │   ├── users/[id]/page.tsx           # Public user profile
+│   │
+│   ├── courts/
+│   │   ├── create/page.tsx           # Create/import court
+│   │   └── [id]/page.tsx             # Court detail + reviews
 │   │
 │   ├── events/
 │   │   ├── page.tsx                  # Event discovery (map + list)
@@ -43,7 +51,8 @@ src/
 │       ├── join/page.tsx             # Join via invite code
 │       └── [id]/
 │           ├── page.tsx              # League detail (overview, fixtures, standings)
-│           └── record/page.tsx       # Record match results
+│           ├── record/page.tsx       # Record match results
+│           └── schedule/page.tsx     # League schedule calendar view
 │
 ├── features/                         # Feature modules (components + hooks + types)
 │   ├── events/
@@ -105,6 +114,19 @@ src/
 │   │       ├── useLeagueDetailPage.ts        # Data fetching + state for league detail
 │   │       └── useRecordResultsPage.ts       # Data fetching for result recording
 │   │
+│   ├── courts/
+│   │   ├── components/
+│   │   │   ├── CourtCreatePageClient.tsx     # Create/import court wizard
+│   │   │   ├── CourtDetailPageClient.tsx     # Court detail page
+│   │   │   └── detail/                       # Court detail sub-components
+│   │   │       ├── CourtEditDetailsModal.tsx
+│   │   │       ├── CourtReviewsSection.tsx
+│   │   │       └── WriteReviewModal.tsx
+│   │   ├── hooks/
+│   │   │   └── useOsmCourts.ts               # Fetch courts from Overpass/OSM
+│   │   ├── constants.ts
+│   │   └── types.ts
+│   │
 │   └── social/
 │       ├── components/
 │       │   └── FriendsPageClient.tsx         # Friends list + request management
@@ -115,8 +137,17 @@ src/
 │   ├── Navbar.tsx                    # App header with auth state
 │   ├── NavbarShell.tsx               # Static navbar for loading states
 │   ├── EventCard.tsx                 # Reusable event card (default/hosting/past)
+│   ├── CourtCard.tsx                 # Reusable court card
 │   ├── LocationAutocomplete.tsx      # Nominatim-powered location search
 │   ├── LocationLink.tsx              # Clickable map link
+│   ├── auth/
+│   │   └── GoogleOAuthButton.tsx     # Google SSO sign-in button
+│   ├── create-event/                 # Shared create-event UI primitives
+│   │   ├── ActivityCard.tsx
+│   │   └── StepIndicator.tsx
+│   ├── map/
+│   │   ├── ExploreMap.tsx            # MapLibre GL explore map (events + courts)
+│   │   └── MapDynamic.tsx            # Dynamic (no-SSR) map wrapper
 │   ├── leagues/                      # League-specific modals
 │   │   ├── SubmitResultModal.tsx
 │   │   ├── InviteModal.tsx
@@ -134,12 +165,19 @@ src/
 │       └── useEventShare.ts
 │
 ├── lib/                              # Shared utilities and data access
-│   ├── supabase.ts                   # Supabase browser client init
+│   ├── supabase.ts                   # Supabase browser client (use in Client Components)
+│   ├── supabase-server.ts            # Supabase SSR client (use in Server Components / Route Handlers)
 │   ├── api.ts                        # Backend API base URL
+│   ├── map-config.ts                 # MapLibre style/tile config
+│   ├── courtName.ts                  # Court name formatting utility
 │   ├── queries/                      # Data access functions (Supabase queries)
 │   │   ├── events.ts                 # Event list queries
 │   │   ├── event-detail.ts           # Single event + participants queries
-│   │   └── leagues.ts               # League queries
+│   │   ├── leagues.ts                # League queries
+│   │   ├── courts.ts                 # Court list queries
+│   │   ├── court-detail.ts           # Single court + amenities queries
+│   │   ├── court-reviews.ts          # Court review queries
+│   │   └── profile.ts                # User profile queries
 │   ├── league-types.ts              # League, fixture, session, standing types
 │   ├── league-rules.ts              # Sport-specific rule configurations
 │   ├── league-utils.ts              # getInitials, formatDuration, formatDistance
@@ -156,9 +194,11 @@ src/
 ### Key Patterns
 
 - **Page files are thin shells**: `app/**/page.tsx` files delegate to `features/**/components/*Client.tsx` components. Pages handle Suspense boundaries; client components handle state and rendering.
-- **Feature modules own their domain**: each feature (`events`, `leagues`, `social`) has its own `components/`, `hooks/`, and types. This keeps related code together.
+- **Feature modules own their domain**: each feature (`events`, `leagues`, `courts`, `social`) has its own `components/`, `hooks/`, and types. This keeps related code together.
 - **Data access lives in `lib/queries/`**: Supabase calls are centralized here rather than inline in components.
 - **Shared components are cross-feature only**: `components/` contains UI that's used across multiple features (Navbar, EventCard, modals).
+- **Two Supabase clients**: use `lib/supabase.ts` (browser) in Client Components; use `lib/supabase-server.ts` (`@supabase/ssr`) in Server Components and Route Handlers. Mixing them up causes auth issues.
+- **Map is always dynamically imported**: `MapDynamic.tsx` wraps the MapLibre map with `next/dynamic` + `ssr: false` — import it instead of `ExploreMap.tsx` directly to avoid SSR crashes.
 
 ## Coding Conventions
 
@@ -177,12 +217,20 @@ src/
 ## Supabase and Environment
 
 - Browser client: `src/lib/supabase.ts` uses `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- SSR client: `src/lib/supabase-server.ts` uses the same vars via `@supabase/ssr` `createServerClient`.
 - Backend API base: `src/lib/api.ts` reads `NEXT_PUBLIC_API_BASE_URL`.
 - Never expose service keys or secrets in client components.
 
+## Tests
+
+- Test runner: Node.js built-in (`node --test --experimental-strip-types`)
+- Test files: `src/_tests_/lib/*.test.ts`
+- Run: `pnpm test`
+
 ## Commands
 
-- `npm run dev` — dev server
-- `npm run build` — production build
-- `npm run start` — run production server
-- `npm run lint` — ESLint (Next core-web-vitals + TypeScript)
+- `pnpm dev` — dev server
+- `pnpm build` — production build
+- `pnpm start` — run production server
+- `pnpm lint` — ESLint (Next core-web-vitals + TypeScript)
+- `pnpm test` — run unit tests

@@ -108,7 +108,7 @@ export default function InviteModal({
           <button
             onClick={onSend}
             disabled={sending}
-            className="flex-1 py-3 bg-zinc-900 text-white rounded-full font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50"
+            className="flex-1 py-3 bg-orange-500 text-white rounded-full font-medium hover:bg-orange-600 transition-colors disabled:opacity-50"
           >
             {sending ? "Sending..." : "Send Invites"}
           </button>

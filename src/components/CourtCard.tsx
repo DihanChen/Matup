@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import type { DisplayCourt } from "@/features/courts/types";
+import { getCourtDisplayName } from "@/lib/courtName";
 
 type CourtCardProps = {
   court: DisplayCourt;
@@ -81,7 +82,7 @@ export default function CourtCard({ court, compact = false, onSelect, isSelected
         </div>
 
         <h3 className={`font-semibold text-zinc-900 ${compact ? "text-xs mb-1" : "text-sm mb-2"} line-clamp-1 group-hover:text-orange-500 transition-colors`}>
-          {court.name}
+          {getCourtDisplayName(court.name, court.address, court.sport_types)}
         </h3>
 
         <div className="flex items-center justify-between gap-3">
