@@ -23,7 +23,15 @@ export type LeagueDetailContentProps = {
   displayedPendingReviewMatches: LeagueMatch[];
   displayedUpcomingMatches: LeagueMatch[];
   ownerMember: LeagueMember | null;
+  allMatches: LeagueMatch[];
   completedMatches: LeagueMatch[];
+  announcements: Array<{
+    id: string;
+    title: string;
+    body: string;
+    created_at: string;
+    author_name: string;
+  }>;
   sortedRunningSessions: RunningSession[];
   isRacketLeague: boolean;
   isPickleballLeague: boolean;
@@ -74,6 +82,8 @@ export type LeagueDetailContentProps = {
   onHandleLeave: () => void;
   onHandleCopyInviteLink: () => void;
   onOpenInviteModal: () => void;
+  onHandleEditLeague: () => void;
+  onHandleCopyLeague: () => void;
   onHandleGenerateSchedule: () => void;
   onOpenAssignedTeamsModal: () => void;
   onOpenEmailModal: () => void;
@@ -96,6 +106,20 @@ export type LeagueDetailContentProps = {
   onOpenRejectSubmissionModal: (match: LeagueMatch) => void;
   onOpenResolveDisputeModal: (match: LeagueMatch) => void;
   onSelectSubmitResult: (match: LeagueMatch) => void;
+  onOpenRescheduleModal: (match: LeagueMatch) => void;
+  reschedulingFixtureId: string | null;
+  onGeneratePlayoffs: (topN?: number) => void;
+  generatingPlayoffs: boolean;
+  seasons: Array<{
+    id: string;
+    season_number: number;
+    name: string | null;
+    status: string;
+  }>;
+  selectedSeasonId: string | null;
+  onSeasonChange: (seasonId: string | null) => void;
+  onCreateNewSeason: (seasonName?: string) => void;
+  creatingNewSeason: boolean;
   getMemberNameById: (memberId: string) => string;
   renderMatchResult: (match: LeagueMatch) => ReactNode;
 };

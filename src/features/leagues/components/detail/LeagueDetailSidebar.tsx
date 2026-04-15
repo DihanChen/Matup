@@ -9,6 +9,7 @@ import SidebarInviteConsoleCard from "@/features/leagues/components/detail/Sideb
 import SidebarMembersDirectoryCard from "@/features/leagues/components/detail/SidebarMembersDirectoryCard";
 import SidebarNotesCard from "@/features/leagues/components/detail/SidebarNotesCard";
 import SidebarPlayersCard from "@/features/leagues/components/detail/SidebarPlayersCard";
+import SeasonPickerCard from "@/features/leagues/components/detail/SeasonPickerCard";
 
 type Props = {
   data: LeagueDetailContentProps;
@@ -23,6 +24,7 @@ export default function LeagueDetailSidebar({ data }: Props) {
       <SidebarMembersDirectoryCard data={data} />
       <SidebarInviteConsoleCard data={data} />
       <SidebarAssignedTeamsCard data={data} />
+      <SeasonPickerCard data={data} />
       <SidebarNotesCard data={data} />
       <SidebarInfoCard data={data} />
     </div>

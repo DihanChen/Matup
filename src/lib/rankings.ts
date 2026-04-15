@@ -18,6 +18,9 @@ export type Standing = {
   goalDifference: number;
   totalTime: number;
   totalPoints: number;
+  streak?: number;
+  form?: Array<"W" | "L" | "D">;
+  previousRank?: number | null;
 };
 
 export type TeamStanding = {

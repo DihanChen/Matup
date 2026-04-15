@@ -146,6 +146,60 @@ export default function SportAndFormatStep({ formData, onUpdateFormData }: Props
 
       {(formData.sportType === "tennis" || formData.sportType === "pickleball") && (
         <>
+          {/* League Type: Season vs Tournament */}
+          <div className="max-w-md mx-auto mb-6">
+            <div className="flex items-center gap-2 mb-4 justify-center">
+              <svg className="w-4 h-4 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236c.982.143 1.954.317 2.916.52A6.003 6.003 0 0 1 16.27 9.728M18.75 4.236V4.5c0 2.108-.966 3.99-2.48 5.228m0 0a6.023 6.023 0 0 1-2.77.952m0 0a23.127 23.127 0 0 1-5 0m5 0a6.023 6.023 0 0 0 2.77-.952" />
+              </svg>
+              <span className="text-sm font-bold text-zinc-900">Format</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => onUpdateFormData({ leagueType: "season", matchType: "", rotationType: "" })}
+                className={`
+                  p-4 sm:p-6 rounded-2xl cursor-pointer transition-all duration-200
+                  bg-zinc-100 flex flex-col items-center text-center
+                  hover:scale-105 hover:shadow-lg
+                  ${formData.leagueType === "season"
+                    ? "ring-2 ring-yellow-400 ring-offset-2 scale-105 shadow-lg"
+                    : "hover:ring-2 hover:ring-zinc-300"
+                  }
+                `}
+              >
+                <div className="text-zinc-900 mb-2">
+                  <svg className="w-7 h-7 sm:w-8 sm:h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                  </svg>
+                </div>
+                <div className="font-semibold text-zinc-900 text-sm">Season</div>
+                <div className="text-xs text-zinc-500 mt-1">Round-robin over multiple weeks</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateFormData({ leagueType: "tournament", matchType: "", rotationType: "" })}
+                className={`
+                  p-4 sm:p-6 rounded-2xl cursor-pointer transition-all duration-200
+                  bg-zinc-100 flex flex-col items-center text-center
+                  hover:scale-105 hover:shadow-lg
+                  ${formData.leagueType === "tournament"
+                    ? "ring-2 ring-yellow-400 ring-offset-2 scale-105 shadow-lg"
+                    : "hover:ring-2 hover:ring-zinc-300"
+                  }
+                `}
+              >
+                <div className="text-zinc-900 mb-2">
+                  <svg className="w-7 h-7 sm:w-8 sm:h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236c.982.143 1.954.317 2.916.52A6.003 6.003 0 0 1 16.27 9.728M18.75 4.236V4.5c0 2.108-.966 3.99-2.48 5.228m0 0a6.023 6.023 0 0 1-2.77.952m0 0a23.127 23.127 0 0 1-5 0m5 0a6.023 6.023 0 0 0 2.77-.952" />
+                  </svg>
+                </div>
+                <div className="font-semibold text-zinc-900 text-sm">Tournament</div>
+                <div className="text-xs text-zinc-500 mt-1">Single elimination bracket</div>
+              </button>
+            </div>
+          </div>
+
           <div className="max-w-md mx-auto mb-6">
             <div className="flex items-center gap-2 mb-4 justify-center">
               <ActivityIcon id={formData.sportType} className="w-4 h-4 text-zinc-500" />
@@ -197,7 +251,7 @@ export default function SportAndFormatStep({ formData, onUpdateFormData }: Props
             </div>
           </div>
 
-          {formData.matchType === "doubles" && (
+          {formData.matchType === "doubles" && formData.leagueType === "season" && (
             <div className="max-w-md mx-auto">
               <div className="flex items-center gap-2 mb-4 justify-center">
                 <svg className="w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

@@ -13,6 +13,7 @@ import {
   type ParticipantInfo,
 } from "@/lib/queries/event-detail";
 import { useEventShare } from "@/components/share/useEventShare";
+import { joinEvent } from "@/lib/queries/events";
 
 type EmailTemplate = {
   id: string;
@@ -317,24 +318,22 @@ export function useEventDetailPage() {
   }
 
   async function handleJoin() {
-    if (!user) { router.push("/login"); return; }
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     setJoining(true);
     const supabase = createClient();
 
-    await supabase.from("profiles").upsert({
-      id: user.id,
-      name: user.user_metadata?.name || null,
-      avatar_url: user.user_metadata?.avatar_url || null,
-    }, { onConflict: "id" });
+    const result = await joinEvent(supabase, eventId);
 
-    const { error } = await supabase.from("event_participants").insert({ event_id: eventId, user_id: user.id });
+    if (result.error || !result.participant) {
+      setError(result.error || "Failed to join event.");
+      setJoining(false);
+      return;
+    }
 
-    if (error) { setError(error.message); setJoining(false); return; }
-
-    setParticipants((prev) => [
-      ...prev,
-      { id: Date.now().toString(), user_id: user.id, name: user.user_metadata?.name || null, avatar_url: user.user_metadata?.avatar_url || null },
-    ]);
+    setParticipants((prev) => [...prev, result.participant!]);
     setJoining(false);
     setShowJoinModal(false);
   }

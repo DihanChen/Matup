@@ -3,13 +3,19 @@
 interface StepIndicatorProps {
   currentStep: number;
   totalSteps: number;
+  labels?: string[];
   onStepClick?: (step: number) => void;
 }
 
-const STEP_LABELS = ['Select Sport', 'Select Location & Time', 'Almost there'];
+const STEP_LABELS = ["Select Sport", "Select Location & Time", "Almost there"];
 
-export default function StepIndicator({ currentStep, totalSteps }: StepIndicatorProps) {
-  const progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
+export default function StepIndicator({
+  currentStep,
+  totalSteps,
+  labels = STEP_LABELS,
+}: StepIndicatorProps) {
+  const progress = (currentStep / totalSteps) * 100;
+  const currentLabel = labels[currentStep - 1] || labels[labels.length - 1] || "";
 
   return (
     <div className="mb-6 sm:mb-8">
@@ -18,7 +24,7 @@ export default function StepIndicator({ currentStep, totalSteps }: StepIndicator
           Step <span className="text-orange-500 font-bold">{String(currentStep).padStart(2, '0')}</span> / {String(totalSteps).padStart(2, '0')}
         </span>
         <span className="text-xs sm:text-sm font-medium text-zinc-900">
-          {STEP_LABELS[currentStep - 1]}
+          {currentLabel}
         </span>
       </div>
       <div className="h-1 bg-zinc-200 rounded-full overflow-hidden">

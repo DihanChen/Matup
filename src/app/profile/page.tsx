@@ -1,32 +1,63 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { ErrorState } from "@/components/ui";
 
 export default function ProfilePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const retry = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    setReloadKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     async function redirectToPublicProfile() {
       const supabase = createClient();
       const {
         data: { user },
+        error: authErr,
       } = await supabase.auth.getUser();
 
+      if (authErr) throw authErr;
+
       if (!user) {
-        router.replace("/login");
+        router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`);
         return;
       }
 
       router.replace(`/users/${user.id}`);
     }
 
-    redirectToPublicProfile().finally(() => {
-      setLoading(false);
-    });
-  }, [router]);
+    redirectToPublicProfile()
+      .catch((err) => {
+        console.error("ProfilePage redirect failed", err);
+        setError(err instanceof Error ? err : new Error("Failed to load profile"));
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [router, reloadKey]);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white">
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <ErrorState
+            title="Couldn't load your profile"
+            description="We couldn't sign you in to view your profile. Check your connection and try again."
+            onRetry={retry}
+          />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">

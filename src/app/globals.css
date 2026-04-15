@@ -3,13 +3,45 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --accent: #f97315;
-  --accent-hover: #e0670f;
+  --accent: #f97316;
+  --accent-hover: #dd6411;
+
+  /* Neutral surface tokens (see docs/DESIGN_SYSTEM.md) */
+  --surface: #fafafa;
+  --surface-alt: #f5f5f5;
+  --surface-muted: #f8fafc;
+  --surface-tinted: #fff8f1;
+  --border-subtle: #e4e4e7;
+  --border-default: #d4d4d8;
+
+  /* Semantic tokens */
+  --success: #16a34a;
+  --warning: #eab308;
+  --danger: #dc2626;
+  --info: #2563eb;
+
+  /* Brand gradient stops (used by share cards and hero sections) */
+  --gradient-warm-from: #faf7f2;
+  --gradient-warm-via: #f7f2ec;
+  --gradient-warm-to: #f3ede6;
+  --gradient-cool-from: #eef2f5;
+  --gradient-cool-via: #dce7f4;
+  --gradient-cool-to: #d8e4db;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-tinted: var(--surface-tinted);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-inter);
   --color-orange-50: #fff8f1;
@@ -17,7 +49,7 @@
   --color-orange-200: #fed7aa;
   --color-orange-300: #fdba74;
   --color-orange-400: #fb923c;
-  --color-orange-500: rgba(249, 115, 21);
+  --color-orange-500: #f97316;
   --color-orange-600: #dd6411;
   --color-orange-700: #b8510d;
   --color-orange-800: #923f0a;
@@ -40,18 +72,78 @@ body {
   display: none;
 }
 
-.leaflet-popup-content-wrapper {
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+/* Themed scrollbar for horizontal scroll areas (uses border-default token) */
+.scrollbar-themed {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-default) transparent;
 }
 
-.leaflet-popup-tip {
-  box-shadow: none;
+.scrollbar-themed::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
 }
 
-.custom-event-marker,
-.custom-court-marker,
-.custom-user-marker {
-  background: transparent !important;
-  border: none !important;
+.scrollbar-themed::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-themed::-webkit-scrollbar-thumb {
+  background-color: var(--border-default);
+  border-radius: 999px;
+}
+
+/* Reusable surface gradients (see docs/DESIGN_SYSTEM.md "Brand gradient stops") */
+.bg-surface-cool-gradient {
+  background: linear-gradient(180deg, var(--surface-muted) 0%, var(--gradient-cool-from) 100%);
+}
+
+.bg-surface-warm-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--gradient-warm-from) 0%,
+    var(--gradient-warm-via) 50%,
+    var(--gradient-warm-to) 100%
+  );
+}
+
+.bg-league-hero-gradient {
+  background: linear-gradient(
+    135deg,
+    #eef2ef 0%,
+    var(--gradient-cool-via) 38%,
+    var(--gradient-cool-to) 72%,
+    #edf0eb 100%
+  );
+}
+
+.maplibregl-map {
+  font: inherit;
+}
+
+.maplibregl-ctrl-bottom-right,
+.maplibregl-ctrl-bottom-left {
+  margin: 0 1rem 1rem;
+}
+
+.maplibregl-ctrl-group,
+.maplibregl-ctrl-attrib {
+  border: 1px solid rgb(228 228 231 / 0.9) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 14px 32px rgb(15 23 42 / 0.14) !important;
+  overflow: hidden;
+}
+
+.maplibregl-ctrl-group button {
+  width: 36px;
+  height: 36px;
+}
+
+.maplibregl-ctrl-attrib {
+  background: rgb(255 255 255 / 0.92) !important;
+  backdrop-filter: blur(10px);
+  padding: 0.2rem 0.55rem !important;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: rgb(82 82 91) !important;
 }

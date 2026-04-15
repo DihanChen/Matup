@@ -1,9 +1,11 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import type { Court, CourtCreateFormData } from "@/features/courts/types";
+import type { BoundingBox } from "@/features/courts/types";
 
 export async function getApprovedCourts(
   supabase: SupabaseClient,
-  sportFilter?: string
+  sportFilter?: string,
+  bounds?: BoundingBox | null
 ): Promise<Court[]> {
   let query = supabase
     .from("courts")
@@ -13,6 +15,14 @@ export async function getApprovedCourts(
 
   if (sportFilter) {
     query = query.contains("sport_types", [sportFilter]);
+  }
+
+  if (bounds) {
+    query = query
+      .gte("latitude", bounds.south)
+      .lte("latitude", bounds.north)
+      .gte("longitude", bounds.west)
+      .lte("longitude", bounds.east);
   }
 
   const { data, error } = await query;

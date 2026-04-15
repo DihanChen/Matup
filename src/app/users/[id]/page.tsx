@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import EventCard from "@/components/EventCard";
 import { createClient } from "@/lib/supabase";
+import { getApiBaseUrl } from "@/lib/api";
 
 type Profile = {
   id: string;
@@ -110,6 +111,7 @@ export default function PublicProfilePage() {
   const [editName, setEditName] = useState("");
   const [editBio, setEditBio] = useState("");
   const [galleryUrls, setGalleryUrls] = useState<string[]>([]);
+  const [matchStats, setMatchStats] = useState<{ played: number; won: number; lost: number; winRate: number } | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
 
   const isOwnProfile = currentUser?.id === userId;
@@ -211,6 +213,24 @@ export default function PublicProfilePage() {
 
         setUpcomingEvents(hostedUpcoming || []);
         setPastEvents(hostedPast || []);
+
+        // Fetch match stats if viewing own profile
+        if (user && user.id === userId) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            try {
+              const statsRes = await fetch(`${getApiBaseUrl()}/api/users/me/match-history`, {
+                headers: { Authorization: `Bearer ${session.access_token}` },
+              });
+              if (statsRes.ok) {
+                const statsData = await statsRes.json();
+                if (statsData.stats) setMatchStats(statsData.stats);
+              }
+            } catch {
+              // Ignore
+            }
+          }
+        }
       } finally {
         setLoading(false);
       }
@@ -852,6 +872,30 @@ export default function PublicProfilePage() {
           </div>
 
           <div className="space-y-6">
+            {matchStats && matchStats.played > 0 && (
+              <section>
+                <h3 className="text-lg font-bold text-zinc-900 mb-4">League Stats</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-zinc-50 p-4 text-center">
+                    <div className="text-2xl font-bold text-zinc-900">{matchStats.played}</div>
+                    <div className="text-xs text-zinc-500">Matches</div>
+                  </div>
+                  <div className="rounded-2xl bg-zinc-50 p-4 text-center">
+                    <div className="text-2xl font-bold text-orange-500">{matchStats.winRate}%</div>
+                    <div className="text-xs text-zinc-500">Win Rate</div>
+                  </div>
+                  <div className="rounded-2xl bg-emerald-50 p-4 text-center">
+                    <div className="text-2xl font-bold text-emerald-600">{matchStats.won}</div>
+                    <div className="text-xs text-zinc-500">Won</div>
+                  </div>
+                  <div className="rounded-2xl bg-red-50 p-4 text-center">
+                    <div className="text-2xl font-bold text-red-500">{matchStats.lost}</div>
+                    <div className="text-xs text-zinc-500">Lost</div>
+                  </div>
+                </div>
+              </section>
+            )}
+
             <section>
               <h3 className="text-lg font-bold text-zinc-900 mb-4">Badges</h3>
               {badges.length === 0 ? (

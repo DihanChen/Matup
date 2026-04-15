@@ -13,6 +13,7 @@ import type { CourtDetail, CourtReview } from "@/features/courts/types";
 import { haversineDistance } from "@/lib/geo";
 import { getApiBaseUrl } from "@/lib/api";
 import { getCourtById, getCourtReviews } from "@/lib/queries/court-detail";
+import { getCourtDisplayName } from "@/lib/courtName";
 import { submitCourtReview } from "@/lib/queries/court-reviews";
 import { createClient } from "@/lib/supabase";
 
@@ -380,7 +381,7 @@ export default function CourtDetailPageClient() {
                   ))}
                 </div>
 
-                <h1 className="text-2xl font-bold text-zinc-900 md:text-3xl">{court.name}</h1>
+                <h1 className="text-2xl font-bold text-zinc-900 md:text-3xl">{getCourtDisplayName(court.name, court.address, court.sport_types)}</h1>
                 <p className="mt-1 text-sm text-zinc-500">{court.address}</p>
 
                 <div className="mt-6 grid grid-cols-1 gap-4 border-t border-zinc-100 pt-5 sm:grid-cols-2">

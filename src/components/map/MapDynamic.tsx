@@ -11,7 +11,7 @@ type ExploreEvent = EventWithMetadata & {
 type MapDynamicProps = {
   events: ExploreEvent[];
   courts: DisplayCourt[];
-  userLocation: { lat: number; lng: number } | null;
+  userLocation: { lat: number; lng: number; accuracy?: number } | null;
   center: [number, number];
   zoom: number;
   selectedId: string | null;

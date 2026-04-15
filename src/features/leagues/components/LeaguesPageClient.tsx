@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import StatusBadge from "@/components/leagues/StatusBadge";
 import { ActivityIcon } from "@/components/create-event/ActivityCard";
+import { ErrorState } from "@/components/ui";
 import {
   getLeagueListData,
   type LeagueWithCount,
@@ -79,32 +80,46 @@ export default function LeaguesPage() {
   const [ownedLeagues, setOwnedLeagues] = useState<League[]>([]);
   const [joinedLeagues, setJoinedLeagues] = useState<League[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState<MembershipView>("all");
+
+  const retry = useCallback(() => {
+    setError(null);
+    setLoading(true);
+    setReloadKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
 
     async function fetchData() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.push("/login");
-        return;
+        if (!user) {
+          router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+          return;
+        }
+
+        const leagueData = await getLeagueListData(supabase, user.id);
+        setIsPremium(leagueData.isPremium);
+        setOwnedLeagues(leagueData.ownedLeagues);
+        setJoinedLeagues(leagueData.joinedLeagues);
+
+        setLoading(false);
+      } catch (err) {
+        console.error("LeaguesPage fetchData failed", err);
+        setError(err instanceof Error ? err : new Error("Failed to load leagues"));
+        setLoading(false);
       }
-
-      const leagueData = await getLeagueListData(supabase, user.id);
-      setIsPremium(leagueData.isPremium);
-      setOwnedLeagues(leagueData.ownedLeagues);
-      setJoinedLeagues(leagueData.joinedLeagues);
-
-      setLoading(false);
     }
 
     fetchData();
-  }, [router]);
+  }, [router, reloadKey]);
 
   const allLeagues = useMemo<LeagueWithRole[]>(
     () =>
@@ -159,6 +174,25 @@ export default function LeaguesPage() {
               </div>
             ))}
           </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white">
+        <main className="max-w-[980px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <div className="mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold text-zinc-900 mb-2">
+              My <span className="text-orange-500">Leagues</span>
+            </h1>
+          </div>
+          <ErrorState
+            title="Couldn't load your leagues"
+            description="We couldn't pull your leagues right now. Check your connection and try again."
+            onRetry={retry}
+          />
         </main>
       </div>
     );
@@ -370,11 +404,45 @@ function LeagueCard({ league }: { league: LeagueWithRole }) {
       <div className="flex items-center justify-between gap-2">
         <StatusBadge status={league.status} />
         {seasonProgress ? (
-          <span className="text-xs text-zinc-500">{seasonProgress.label}</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xs text-zinc-500 shrink-0">{seasonProgress.label}</span>
+            {seasonProgress.percent > 0 && seasonProgress.percent < 100 && (
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 ${
+                seasonProgress.percent < 50
+                  ? "bg-emerald-50 text-emerald-600"
+                  : seasonProgress.percent < 85
+                  ? "bg-amber-50 text-amber-600"
+                  : "bg-red-50 text-red-500"
+              }`}>
+                {seasonProgress.percent < 50
+                  ? "Join now"
+                  : seasonProgress.percent < 85
+                  ? "Midseason"
+                  : "Ending soon"}
+              </span>
+            )}
+          </div>
         ) : (
           <span className="text-xs text-zinc-400">No season timeline</span>
         )}
       </div>
+
+      {/* Season progress bar */}
+      {seasonProgress && seasonProgress.percent > 0 && (
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-zinc-100">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400 transition-all"
+            style={{ width: `${Math.min(100, Math.max(4, seasonProgress.percent))}%` }}
+          />
+        </div>
+      )}
+
+      {/* Capacity indicator */}
+      {league.member_count >= league.max_members && (
+        <div className="mt-2 text-[10px] font-medium text-red-500 text-center">
+          Full
+        </div>
+      )}
     </Link>
   );
 }

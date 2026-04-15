@@ -1,6 +1,7 @@
 "use client";
 
 import StatusBadge from "@/components/leagues/StatusBadge";
+import LeagueShareButton from "@/features/leagues/components/detail/LeagueShareButton";
 import { FORMAT_LABELS, ROTATION_LABELS } from "@/lib/league-types";
 import type { LeagueDetailContentProps } from "@/features/leagues/components/detail/types";
 
@@ -16,9 +17,13 @@ export default function HeaderCard({ data }: Props) {
     sportDisplayName,
     completedMatches,
     members,
+    isOwnerOrAdmin,
+    inviteCode,
     ownerCanToggleToParticipantView,
     ownerViewMode,
     onOwnerViewModeChange,
+    onHandleCopyInviteLink,
+    onOpenInviteModal,
   } = data;
 
   return (
@@ -52,6 +57,14 @@ export default function HeaderCard({ data }: Props) {
             </span>
           )}
         </div>
+        {isOwnerOrAdmin && (
+          <LeagueShareButton
+            inviteCode={inviteCode}
+            onCopyInviteLink={onHandleCopyInviteLink}
+            onInviteByEmail={onOpenInviteModal}
+            className="absolute right-4 top-4"
+          />
+        )}
         <div className="absolute right-4 bottom-4">
           <StatusBadge status={league.status} />
         </div>

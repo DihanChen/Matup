@@ -1,15 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { getApiBaseUrl } from "@/lib/api";
+import { syncProfileFromAuthUser } from "@/lib/queries/profile";
 import type { User } from "@supabase/supabase-js";
 import {
   EMAIL_REGEX,
   getRunningModeFromRules,
-  mapFixturesToLegacyMatches,
-  mergeWorkflowMatches,
+  mapFixturesToMatches,
 } from "@/lib/league-types";
 import type {
   ApiAssignedTeamsResponse,
@@ -47,7 +47,12 @@ export function formatSideNames(match: LeagueMatch, side: "A" | "B"): string {
 export function useLeagueDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const leagueId = params.id as string;
+
+  // Tracks whether the initial season load in fetchData has already loaded the correct fixtures.
+  // Prevents the season-change effect from firing a redundant second fixtures fetch on mount.
+  const initialSeasonLoadedRef = useRef(false);
 
   const [user, setUser] = useState<User | null>(null);
   const [league, setLeague] = useState<League | null>(null);
@@ -61,6 +66,7 @@ export function useLeagueDetailPage() {
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generatingPlayoffs, setGeneratingPlayoffs] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -78,6 +84,23 @@ export function useLeagueDetailPage() {
   const [sendingInvites, setSendingInvites] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [announcements, setAnnouncements] = useState<Array<{
+    id: string;
+    league_id: string;
+    author_id: string;
+    title: string;
+    body: string;
+    created_at: string;
+    author_name: string;
+  }>>([]);
+  const [seasons, setSeasons] = useState<Array<{
+    id: string;
+    season_number: number;
+    name: string | null;
+    status: string;
+  }>>([]);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
+  const [creatingNewSeason, setCreatingNewSeason] = useState(false);
   const [runningSessions, setRunningSessions] = useState<RunningSession[]>([]);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const [submittingRunSessionId, setSubmittingRunSessionId] = useState<string | null>(null);
@@ -85,6 +108,8 @@ export function useLeagueDetailPage() {
   const [finalizingSessionId, setFinalizingSessionId] = useState<string | null>(null);
   const [creatingSession, setCreatingSession] = useState(false);
   const [resolvingFixtureId, setResolvingFixtureId] = useState<string | null>(null);
+  const [reschedulingFixtureId, setReschedulingFixtureId] = useState<string | null>(null);
+  const [rescheduleMatch, setRescheduleMatch] = useState<LeagueMatch | null>(null);
   const [showCreateSessionModal, setShowCreateSessionModal] = useState(false);
   const [createSessionWeek, setCreateSessionWeek] = useState("");
   const [createSessionDistance, setCreateSessionDistance] = useState("5000");
@@ -134,10 +159,18 @@ export function useLeagueDetailPage() {
     return () => window.clearTimeout(timeout);
   }, [successMessage]);
 
+  useEffect(() => {
+    if (searchParams.get("updated") !== "1") return;
+    setSuccessMessage("League updated.");
+    router.replace(`/leagues/${leagueId}`);
+  }, [leagueId, router, searchParams]);
+
   const loadWorkflowFixtures = useCallback(
-    async (accessToken: string): Promise<LeagueMatch[]> => {
+    async (accessToken: string, seasonId?: string | null): Promise<LeagueMatch[]> => {
       try {
-        const response = await fetch(`${getApiBaseUrl()}/api/leagues/${leagueId}/fixtures`, {
+        const url = new URL(`${getApiBaseUrl()}/api/leagues/${leagueId}/fixtures`);
+        if (seasonId) url.searchParams.set("season_id", seasonId);
+        const response = await fetch(url.toString(), {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
@@ -145,7 +178,7 @@ export function useLeagueDetailPage() {
 
         if (!response.ok) return [];
         const data = (await response.json()) as { fixtures?: ApiFixture[] };
-        return mapFixturesToLegacyMatches(data.fixtures || []);
+        return mapFixturesToMatches(data.fixtures || []);
       } catch {
         return [];
       }
@@ -229,6 +262,48 @@ export function useLeagueDetailPage() {
         if (!response.ok) return null;
         return (await response.json()) as ApiAssignedTeamsResponse;
       } catch {
+        return null;
+      }
+    },
+    [leagueId]
+  );
+
+  const loadAnnouncements = useCallback(
+    async (accessToken: string) => {
+      try {
+        const response = await fetch(
+          `${getApiBaseUrl()}/api/leagues/${leagueId}/announcements`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        setAnnouncements(data.announcements || []);
+      } catch {
+        // Silently fail
+      }
+    },
+    [leagueId]
+  );
+
+  const loadSeasons = useCallback(
+    async (accessToken: string): Promise<string | null> => {
+      try {
+        const response = await fetch(
+          `${getApiBaseUrl()}/api/leagues/${leagueId}/seasons`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        if (!response.ok) return null;
+        const data = (await response.json()) as {
+          seasons: Array<{ id: string; season_number: number; name: string | null; status: string }>;
+          currentSeasonId: string | null;
+        };
+        setSeasons(data.seasons || []);
+        if (data.currentSeasonId) {
+          setSelectedSeasonId((prev) => prev ?? data.currentSeasonId);
+        }
+        return data.currentSeasonId ?? null;
+      } catch {
+        // Silently fail
         return null;
       }
     },
@@ -329,56 +404,25 @@ export function useLeagueDetailPage() {
         setMembers(membersWithInfo);
       }
 
-      // Get legacy matches/results (existing v1 data)
-      const { data: matchesData } = await supabase
-        .from("league_matches")
-        .select("*")
-        .eq("league_id", leagueId)
-        .order("created_at", { ascending: false });
-
-      let legacyMatchesWithParticipants: LeagueMatch[] = [];
-      if (matchesData && matchesData.length > 0) {
-        const matchIds = matchesData.map((m) => m.id);
-        const { data: participantsData } = await supabase
-          .from("match_participants")
-          .select("match_id, user_id, team, score, time_seconds, points, set_scores")
-          .in("match_id", matchIds);
-
-        // Get participant names
-        const pUserIds = [
-          ...new Set(participantsData?.map((p) => p.user_id) || []),
-        ];
-        const { data: pProfiles } = await supabase
-          .from("profiles")
-          .select("id, name, avatar_url")
-          .in("id", pUserIds.length > 0 ? pUserIds : ["_"]);
-
-        const matchesWithParticipants: LeagueMatch[] = matchesData.map((match) => ({
-          ...match,
-          source: "legacy",
-          workflow_status: undefined,
-          latest_submission: null,
-          participants: (participantsData || [])
-            .filter((p) => p.match_id === match.id)
-            .map((p) => ({
-              ...p,
-              name: pProfiles?.find((pr) => pr.id === p.user_id)?.name ?? null,
-            })),
-        }));
-
-        legacyMatchesWithParticipants = matchesWithParticipants;
-      }
-
+      // Fetch fixtures via backend API
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const workflowMatches = session?.access_token
-        ? await loadWorkflowFixtures(session.access_token)
-        : [];
-
-      setMatches(mergeWorkflowMatches(legacyMatchesWithParticipants, workflowMatches));
 
       if (session?.access_token) {
+        // Load seasons first so we know the correct season ID before fetching fixtures.
+        // This prevents a double-fetch: initial all-fixtures load followed by a season-
+        // filtered re-fetch triggered by the season-change effect.
+        let initialSeasonId: string | null = null;
+        if (currentRole) {
+          initialSeasonLoadedRef.current = true; // mark: season effect should skip its first fire
+          initialSeasonId = await loadSeasons(session.access_token);
+        }
+
+        // Load fixtures once with the correct season ID from the start
+        const fixtureMatches = await loadWorkflowFixtures(session.access_token, initialSeasonId ?? undefined);
+        setMatches(fixtureMatches);
+
         const backendStandings = await loadBackendStandings(session.access_token);
         if (backendStandings?.standings) {
           setStandings(backendStandings.standings);
@@ -417,13 +461,40 @@ export function useLeagueDetailPage() {
             setLeagueInvites(inviteData.invites || []);
           }
         }
+
+        // Announcements are cosmetic — still fire-and-forget
+        if (currentRole) {
+          loadAnnouncements(session.access_token);
+        }
+      } else {
+        setMatches([]);
       }
 
       setLoading(false);
     }
 
     fetchData();
-  }, [leagueId, loadWorkflowFixtures, loadBackendStandings, loadLeagueInvites, loadRunningSessions, loadAssignedTeams]);
+  }, [leagueId, loadWorkflowFixtures, loadBackendStandings, loadLeagueInvites, loadRunningSessions, loadAssignedTeams, loadAnnouncements, loadSeasons]);
+
+  // Refetch fixtures when the user changes the selected season.
+  // Guard: skip the first fire that happens when fetchData sets selectedSeasonId on mount,
+  // since fetchData already loaded fixtures for that season.
+  useEffect(() => {
+    if (selectedSeasonId === null) return;
+    if (initialSeasonLoadedRef.current) {
+      // fetchData just set this season — fixtures already loaded, skip the redundant refetch
+      initialSeasonLoadedRef.current = false;
+      return;
+    }
+    async function refetchForSeason() {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const fixtureMatches = await loadWorkflowFixtures(session.access_token, selectedSeasonId);
+      setMatches(fixtureMatches);
+    }
+    refetchForSeason();
+  }, [selectedSeasonId, loadWorkflowFixtures]);
 
   async function handleGenerateSchedule() {
     if (!league || !user) return;
@@ -462,7 +533,7 @@ export function useLeagueDetailPage() {
       }
 
       const workflowMatches = await loadWorkflowFixtures(session.access_token);
-      setMatches((prev) => mergeWorkflowMatches(prev, workflowMatches));
+      setMatches(workflowMatches);
       const backendStandings = await loadBackendStandings(session.access_token);
       if (backendStandings?.standings) {
         setStandings(backendStandings.standings);
@@ -484,6 +555,105 @@ export function useLeagueDetailPage() {
       setError(apiError instanceof Error ? apiError.message : "Failed to generate schedule");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleGeneratePlayoffs(topN?: number) {
+    if (!league || !user) return;
+
+    setGeneratingPlayoffs(true);
+    setError(null);
+
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setError("You must be logged in to generate playoffs.");
+      setGeneratingPlayoffs(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${getApiBaseUrl()}/api/leagues/${leagueId}/playoffs/generate`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ top_n: topN || 8 }),
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        setError(data?.error || "Failed to generate playoffs");
+        setGeneratingPlayoffs(false);
+        return;
+      }
+
+      const workflowMatches = await loadWorkflowFixtures(session.access_token);
+      setMatches(workflowMatches);
+      setSuccessMessage("Playoff bracket generated!");
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (apiError) {
+      setError(apiError instanceof Error ? apiError.message : "Failed to generate playoffs");
+    } finally {
+      setGeneratingPlayoffs(false);
+    }
+  }
+
+  async function handleCreateNewSeason(seasonName?: string) {
+    if (!league || !user) return;
+
+    setCreatingNewSeason(true);
+    setError(null);
+
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setError("You must be logged in.");
+      setCreatingNewSeason(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${getApiBaseUrl()}/api/leagues/${leagueId}/seasons`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name: seasonName }),
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        setError(data?.error || "Failed to create new season");
+        setCreatingNewSeason(false);
+        return;
+      }
+
+      // Refresh seasons and select the new one
+      await loadSeasons(session.access_token);
+      if (data?.season?.id) {
+        setSelectedSeasonId(data.season.id);
+      }
+      setSuccessMessage("New season created!");
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (apiError) {
+      setError(apiError instanceof Error ? apiError.message : "Failed to create new season");
+    } finally {
+      setCreatingNewSeason(false);
     }
   }
 
@@ -531,7 +701,7 @@ export function useLeagueDetailPage() {
       }
 
       const workflowMatches = await loadWorkflowFixtures(session.access_token);
-      setMatches((prev) => mergeWorkflowMatches(prev, workflowMatches));
+      setMatches(workflowMatches);
       const backendStandings = await loadBackendStandings(session.access_token);
       if (backendStandings?.standings) {
         setStandings(backendStandings.standings);
@@ -576,6 +746,7 @@ export function useLeagueDetailPage() {
     try {
       await navigator.clipboard.writeText(inviteCode);
       setInviteSuccess("Invite code copied.");
+      setSuccessMessage("Invite code copied.");
     } catch {
       setInviteError("Unable to copy invite code.");
     }
@@ -587,9 +758,18 @@ export function useLeagueDetailPage() {
     try {
       await navigator.clipboard.writeText(link);
       setInviteSuccess("Invite link copied.");
+      setSuccessMessage("Invite link copied.");
     } catch {
       setInviteError("Unable to copy invite link.");
     }
+  }
+
+  function handleEditLeague() {
+    router.push(`/leagues/${leagueId}/edit`);
+  }
+
+  function handleCopyLeague() {
+    router.push(`/leagues/create?copyLeagueId=${encodeURIComponent(leagueId)}`);
   }
 
   function openInviteModal() {
@@ -742,7 +922,7 @@ export function useLeagueDetailPage() {
     if (!session?.access_token) return;
 
     const workflowMatches = await loadWorkflowFixtures(session.access_token);
-    setMatches((prev) => mergeWorkflowMatches(prev, workflowMatches));
+    setMatches(workflowMatches);
     const backendStandings = await loadBackendStandings(session.access_token);
     if (backendStandings?.standings) {
       setStandings(backendStandings.standings);
@@ -961,7 +1141,7 @@ export function useLeagueDetailPage() {
       }
 
       const workflowMatches = await loadWorkflowFixtures(authSession.access_token);
-      setMatches((prev) => mergeWorkflowMatches(prev, workflowMatches));
+      setMatches(workflowMatches);
       await refreshRunningData(authSession.access_token);
       setShowCreateSessionModal(false);
     } catch (createError) {
@@ -1051,7 +1231,7 @@ export function useLeagueDetailPage() {
       }
 
       const workflowMatches = await loadWorkflowFixtures(authSession.access_token);
-      setMatches((prev) => mergeWorkflowMatches(prev, workflowMatches));
+      setMatches(workflowMatches);
       await refreshRunningData(authSession.access_token);
       setRunEntrySession(null);
     } catch (submitError) {
@@ -1149,7 +1329,7 @@ export function useLeagueDetailPage() {
       }
 
       const workflowMatches = await loadWorkflowFixtures(authSession.access_token);
-      setMatches((prev) => mergeWorkflowMatches(prev, workflowMatches));
+      setMatches(workflowMatches);
       await refreshRunningData(authSession.access_token);
     } catch (finalizeError) {
       setSessionsError(
@@ -1201,7 +1381,7 @@ export function useLeagueDetailPage() {
       }
 
       const workflowMatches = await loadWorkflowFixtures(authSession.access_token);
-      setMatches((prev) => mergeWorkflowMatches(prev, workflowMatches));
+      setMatches(workflowMatches);
       const backendStandings = await loadBackendStandings(authSession.access_token);
       if (backendStandings?.standings) {
         setStandings(backendStandings.standings);
@@ -1227,6 +1407,51 @@ export function useLeagueDetailPage() {
     }
   }
 
+  function openRescheduleModal(match: LeagueMatch) {
+    setRescheduleMatch(match);
+  }
+
+  async function handleRescheduleFixture(startsAt: string, endsAt: string | null) {
+    if (!rescheduleMatch) return;
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+
+    setReschedulingFixtureId(rescheduleMatch.id);
+    try {
+      const resp = await fetch(
+        `${getApiBaseUrl()}/api/fixtures/${rescheduleMatch.id}/reschedule`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ starts_at: startsAt, ends_at: endsAt }),
+        }
+      );
+
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        setError(data.error || "Failed to reschedule fixture.");
+      } else {
+        setRescheduleMatch(null);
+        const workflowMatches = await loadWorkflowFixtures(session.access_token);
+        setMatches(workflowMatches);
+      }
+    } catch (rescheduleError) {
+      setError(
+        rescheduleError instanceof Error
+          ? rescheduleError.message
+          : "Failed to reschedule fixture."
+      );
+    } finally {
+      setReschedulingFixtureId(null);
+    }
+  }
+
   async function handleJoin() {
     if (!user) {
       router.push("/login");
@@ -1236,16 +1461,7 @@ export function useLeagueDetailPage() {
     setJoining(true);
     const supabase = createClient();
 
-    await supabase
-      .from("profiles")
-      .upsert(
-        {
-          id: user.id,
-          name: user.user_metadata?.name || null,
-          avatar_url: user.user_metadata?.avatar_url || null,
-        },
-        { onConflict: "id" }
-      );
+    const syncedProfile = await syncProfileFromAuthUser(supabase, user);
 
     const { error } = await supabase.from("league_members").insert({
       league_id: leagueId,
@@ -1266,8 +1482,8 @@ export function useLeagueDetailPage() {
         user_id: user.id,
         role: "member",
         joined_at: new Date().toISOString(),
-        name: user.user_metadata?.name || null,
-        avatar_url: user.user_metadata?.avatar_url || null,
+        name: syncedProfile.name,
+        avatar_url: syncedProfile.avatar_url,
       },
     ]);
     setJoining(false);
@@ -1301,15 +1517,6 @@ export function useLeagueDetailPage() {
     setError(null);
 
     const supabase = createClient();
-
-    // Delete match participants first (FK dependency)
-    const matchIds = matches.map((m) => m.id);
-    if (matchIds.length > 0) {
-      await supabase.from("match_participants").delete().in("match_id", matchIds);
-    }
-
-    // Delete matches
-    await supabase.from("league_matches").delete().eq("league_id", leagueId);
 
     // Delete members
     await supabase.from("league_members").delete().eq("league_id", leagueId);
@@ -1412,7 +1619,6 @@ export function useLeagueDetailPage() {
   const scheduledMatches = matches.filter((m) => m.status === "scheduled");
   const pendingReviewMatches = matches.filter(
     (match) =>
-      match.source === "workflow" &&
       match.latest_submission?.status === "pending" &&
       match.latest_submission.submitted_by !== user?.id &&
       match.workflow_status !== "cancelled"
@@ -1452,9 +1658,7 @@ export function useLeagueDetailPage() {
     : [];
   const participantCurrentMatches = participantScheduledMatches.filter((match) => {
     const statusKey =
-      match.source === "workflow" && match.workflow_status
-        ? match.workflow_status
-        : "scheduled";
+      match.workflow_status || "scheduled";
     return (
       statusKey === "awaiting_confirmation" ||
       statusKey === "disputed" ||
@@ -1558,6 +1762,7 @@ export function useLeagueDetailPage() {
     sendingInvites,
     inviteError,
     inviteSuccess,
+    announcements,
     runningSessions,
     sessionsError,
     submittingRunSessionId,
@@ -1646,11 +1851,15 @@ export function useLeagueDetailPage() {
     generateScheduleMessage,
     hasLeagueActions,
     handleGenerateSchedule,
+    handleGeneratePlayoffs,
+    generatingPlayoffs,
     handleReviewSubmission,
     openRejectSubmissionModal,
     handleSubmitSubmissionRejection,
     handleCopyInviteCode,
     handleCopyInviteLink,
+    handleEditLeague,
+    handleCopyLeague,
     openInviteModal,
     closeInviteModal,
     addInviteEmailFromInput,
@@ -1674,12 +1883,22 @@ export function useLeagueDetailPage() {
     handleFinalizeRunningSession,
     openResolveDisputeModal,
     handleResolveDisputedFixture,
+    rescheduleMatch,
+    setRescheduleMatch,
+    reschedulingFixtureId,
+    openRescheduleModal,
+    handleRescheduleFixture,
     handleJoin,
     handleLeave,
     handleDelete,
     openEmailModal,
     closeEmailModal,
     handleSendEmail,
+    seasons,
+    selectedSeasonId,
+    setSelectedSeasonId,
+    handleCreateNewSeason,
+    creatingNewSeason,
   };
 }
 

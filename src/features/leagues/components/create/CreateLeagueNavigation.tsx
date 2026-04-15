@@ -5,6 +5,8 @@ type Props = {
   loading: boolean;
   step: number;
   totalSteps: number;
+  submitLabel?: string;
+  loadingLabel?: string;
   onNextOrSubmit: () => void;
   onBack: () => void;
 };
@@ -14,6 +16,8 @@ export default function CreateLeagueNavigation({
   loading,
   step,
   totalSteps,
+  submitLabel = "Create League",
+  loadingLabel = "Creating...",
   onNextOrSubmit,
   onBack,
 }: Props) {
@@ -25,7 +29,9 @@ export default function CreateLeagueNavigation({
         disabled={!canProceed || loading}
         className={`w-full py-3.5 rounded-full font-medium transition-all ${
           canProceed
-            ? "bg-zinc-900 text-white hover:bg-zinc-800"
+            ? step === totalSteps
+              ? "bg-orange-500 text-white hover:bg-orange-600"
+              : "bg-zinc-900 text-white hover:bg-zinc-800"
             : "bg-zinc-200 text-zinc-400 cursor-not-allowed"
         } disabled:opacity-50`}
       >
@@ -35,10 +41,10 @@ export default function CreateLeagueNavigation({
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Creating...
+            {loadingLabel}
           </span>
         ) : step === totalSteps ? (
-          "Create League"
+          submitLabel
         ) : (
           "Next"
         )}
