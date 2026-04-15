@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  RUN_TIME_LABEL,
+  RUN_DISTANCE_LABEL,
+  RUN_DISTANCE_PLACEHOLDER,
+} from "@/lib/result-submission-strings";
+
 type RunEntryModalProps = {
   isOpen: boolean;
   weekLabel: string;
@@ -36,7 +42,7 @@ export default function RunEntryModal({
         <p className="text-sm text-zinc-500 mb-4">{weekLabel}</p>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1.5">Time (MM:SS)</label>
+            <label className="block text-sm font-medium text-zinc-700 mb-1.5">{RUN_TIME_LABEL}</label>
             <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
               <input
                 type="number"
@@ -59,12 +65,13 @@ export default function RunEntryModal({
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-1.5">Distance (meters)</label>
+            <label className="block text-sm font-medium text-zinc-700 mb-1.5">{RUN_DISTANCE_LABEL}</label>
             <input
               type="number"
               min={1}
               value={distance}
               onChange={(event) => onDistanceChange(event.target.value)}
+              placeholder={RUN_DISTANCE_PLACEHOLDER}
               className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl bg-zinc-50 text-zinc-900"
             />
           </div>
