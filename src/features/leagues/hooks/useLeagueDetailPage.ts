@@ -1646,24 +1646,29 @@ export function useLeagueDetailPage() {
       return;
     }
 
-    // Zero-push-token pre-send check (unless caller is bypassing it)
+    // Zero-push-token pre-send check BEFORE any network call (unless caller is bypassing it)
     if (!opts?.skipZeroCheck) {
+      const memberIds = members
+        .filter((m) => m.user_id !== user.id)
+        .map((m) => m.user_id);
+      const total = memberIds.length;
+      if (total === 0) {
+        setNotifyError("No members to notify yet.");
+        return;
+      }
       try {
-        const memberIds = members
-          .filter((m) => m.user_id !== user.id)
-          .map((m) => m.user_id);
-        const total = memberIds.length;
-        if (total === 0) {
-          setNotifyError("No members to notify yet.");
+        const { data: tokens } = await supabase
+          .from("push_tokens")
+          .select("user_id")
+          .in("user_id", memberIds);
+        const membersWithTokens = (tokens ?? []).length;
+        if (membersWithTokens === 0) {
+          // Show warning BEFORE the POST so user can decide whether to send
+          setZeroTokenWarning({ membersWithTokens: 0, total });
           return;
         }
-        // We'll let the backend do the actual fan-out; just check if zero tokens exist
-        // by making the request and parsing the warning from the result
-        // We surface the warning proactively by checking token count via the sent/skipped response
-        // For the pre-send zero-token warning, flag it so the modal can prompt the user
-        setZeroTokenWarning(null); // reset before check; will be set by response if needed
       } catch {
-        // Non-blocking: proceed anyway
+        // Non-blocking: if the preflight query fails, proceed with the POST anyway
       }
     }
 
