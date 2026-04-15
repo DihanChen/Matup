@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, type MutableRefObject } from "react";
+import { useMemo, type MutableRefObject, type ReactNode } from "react";
 import CourtCard from "@/components/CourtCard";
 import EventCard from "@/components/EventCard";
 import MapDynamic from "@/components/map/MapDynamic";
+import { EmptyState } from "@/components/ui";
 import type { BoundingBox, DisplayCourt } from "@/features/courts/types";
 import type { ExploreEvent, SwipeTab } from "@/features/events/lib/exploreSwipe";
+import { describeEmptyState } from "@/features/events/utils/emptyStateHelpers";
 import {
-  TONIGHT_EMPTY_DESCRIPTION,
-  TONIGHT_EMPTY_TITLE,
+  EMPTY_ACTION_ALL_SPORTS,
+  EMPTY_ACTION_CLEAR_SEARCH,
+  EMPTY_ACTION_CREATE_EVENT,
+  EMPTY_ACTION_SHOW_ALL,
   TONIGHT_FILTER_LABEL,
 } from "@/lib/explore-strings";
 
@@ -292,57 +296,14 @@ export default function ExploreMapView({
             </div>
           ) : activeView === "events" ? (
             visibleEvents.length === 0 ? (
-              tonightOnly ? (
-                <div className="text-center py-12">
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-zinc-100 flex items-center justify-center">
-                    <svg
-                      className="w-5 h-5 text-zinc-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-sm font-medium text-zinc-900 mb-1">{TONIGHT_EMPTY_TITLE}</p>
-                  <p className="text-xs text-zinc-400 mb-4">{TONIGHT_EMPTY_DESCRIPTION}</p>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-zinc-100 flex items-center justify-center">
-                    <svg
-                      className="w-5 h-5 text-zinc-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-sm font-medium text-zinc-900 mb-1">No games found</p>
-                  <p className="text-xs text-zinc-400 mb-4">
-                    {searchQuery
-                      ? "Try a different search"
-                      : "Try a different sport or create the first one."}
-                  </p>
-                  <Link
-                    href="/events/create"
-                    className="inline-block px-4 py-2 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800"
-                  >
-                    Create Event
-                  </Link>
-                </div>
-              )
+              renderEventsEmptyState({
+                sport: sportFilter,
+                search: searchQuery,
+                tonightOnly,
+                onTonightChange,
+                onSportFilterChange,
+                onSearchQueryChange,
+              })
             ) : (
               visibleEvents.map((event) => (
                 <div
@@ -452,5 +413,82 @@ export default function ExploreMapView({
         </div>
       </div>
     </div>
+  );
+}
+
+type EventsEmptyStateArgs = {
+  sport: string;
+  search: string;
+  tonightOnly: boolean;
+  onTonightChange: (next: boolean) => void;
+  onSportFilterChange: (value: string) => void;
+  onSearchQueryChange: (value: string) => void;
+};
+
+function renderEventsEmptyState({
+  sport,
+  search,
+  tonightOnly,
+  onTonightChange,
+  onSportFilterChange,
+  onSearchQueryChange,
+}: EventsEmptyStateArgs) {
+  const copy = describeEmptyState({ sport, search, tonightOnly });
+  const actionClassName =
+    "inline-block px-4 py-2 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800";
+
+  let action: ReactNode = null;
+  switch (copy.actionLabel) {
+    case EMPTY_ACTION_SHOW_ALL:
+      action = (
+        <button
+          type="button"
+          onClick={() => onTonightChange(false)}
+          className={actionClassName}
+        >
+          {EMPTY_ACTION_SHOW_ALL}
+        </button>
+      );
+      break;
+    case EMPTY_ACTION_CLEAR_SEARCH:
+      action = (
+        <button
+          type="button"
+          onClick={() => onSearchQueryChange("")}
+          className={actionClassName}
+        >
+          {EMPTY_ACTION_CLEAR_SEARCH}
+        </button>
+      );
+      break;
+    case EMPTY_ACTION_ALL_SPORTS:
+      action = (
+        <button
+          type="button"
+          onClick={() => onSportFilterChange("")}
+          className={actionClassName}
+        >
+          {EMPTY_ACTION_ALL_SPORTS}
+        </button>
+      );
+      break;
+    case EMPTY_ACTION_CREATE_EVENT:
+      action = (
+        <Link href="/events/create" className={actionClassName}>
+          {EMPTY_ACTION_CREATE_EVENT}
+        </Link>
+      );
+      break;
+    default:
+      action = null;
+  }
+
+  return (
+    <EmptyState
+      compact
+      title={copy.title}
+      description={copy.description}
+      action={action}
+    />
   );
 }
