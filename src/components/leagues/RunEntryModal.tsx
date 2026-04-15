@@ -68,7 +68,7 @@ export default function RunEntryModal({
             <label className="block text-sm font-medium text-zinc-700 mb-1.5">{RUN_DISTANCE_LABEL}</label>
             <input
               type="number"
-              min={1}
+              min={0}
               value={distance}
               onChange={(event) => onDistanceChange(event.target.value)}
               placeholder={RUN_DISTANCE_PLACEHOLDER}
