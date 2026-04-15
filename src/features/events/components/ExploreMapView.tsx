@@ -1,12 +1,47 @@
 "use client";
 
 import Link from "next/link";
-import type { MutableRefObject } from "react";
+import { useMemo, type MutableRefObject } from "react";
 import CourtCard from "@/components/CourtCard";
 import EventCard from "@/components/EventCard";
 import MapDynamic from "@/components/map/MapDynamic";
 import type { BoundingBox, DisplayCourt } from "@/features/courts/types";
 import type { ExploreEvent, SwipeTab } from "@/features/events/lib/exploreSwipe";
+import {
+  TONIGHT_EMPTY_DESCRIPTION,
+  TONIGHT_EMPTY_TITLE,
+  TONIGHT_FILTER_LABEL,
+} from "@/lib/explore-strings";
+
+/**
+ * Mirrors the mobile T-08 helper: returns true when the event is today
+ * (in local time) and still has open spots. The mobile spec uses
+ * `starts_at` / `current_participants`; the web data layer uses
+ * `datetime` / `participant_count` so we accept either shape.
+ */
+export function isTonightWithOpenSpots(event: {
+  starts_at?: string;
+  datetime?: string;
+  max_participants?: number | null;
+  current_participants?: number | null;
+  participant_count?: number | null;
+}): boolean {
+  const now = new Date();
+  const todayYear = now.getFullYear();
+  const todayMonth = now.getMonth();
+  const todayDate = now.getDate();
+  const startsAt = event.starts_at ?? event.datetime;
+  if (!startsAt) return false;
+  const eventDate = new Date(startsAt);
+  const isSameDay =
+    eventDate.getFullYear() === todayYear &&
+    eventDate.getMonth() === todayMonth &&
+    eventDate.getDate() === todayDate;
+  if (!isSameDay) return false;
+  if (event.max_participants == null) return true;
+  const currentCount = event.current_participants ?? event.participant_count ?? 0;
+  return currentCount < event.max_participants;
+}
 
 type SportFilterOption = {
   value: string;
@@ -36,6 +71,8 @@ type Props = {
   activeCount: number;
   eventRowRefs: MutableRefObject<Record<string, HTMLDivElement | null>>;
   courtRowRefs: MutableRefObject<Record<string, HTMLDivElement | null>>;
+  tonightOnly: boolean;
+  onTonightChange: (next: boolean) => void;
   onSearchQueryChange: (value: string) => void;
   onSportFilterChange: (value: string) => void;
   onGetLocation: () => void;
@@ -70,6 +107,8 @@ export default function ExploreMapView({
   activeCount,
   eventRowRefs,
   courtRowRefs,
+  tonightOnly,
+  onTonightChange,
   onSearchQueryChange,
   onSportFilterChange,
   onGetLocation,
@@ -80,6 +119,12 @@ export default function ExploreMapView({
   onMapBoundsChange,
   onOpenSwipeView,
 }: Props) {
+  const visibleEvents = useMemo(
+    () => (tonightOnly ? filteredEvents.filter(isTonightWithOpenSpots) : filteredEvents),
+    [filteredEvents, tonightOnly]
+  );
+  const displayedCount = activeView === "events" ? visibleEvents.length : activeCount;
+
   return (
     <div className="flex-1 flex min-h-0 flex-col lg:flex-row">
       <aside className="w-full lg:w-96 flex-[2] lg:flex-none bg-white border-t lg:border-t-0 lg:border-r border-zinc-200 flex flex-col overflow-hidden min-h-0">
@@ -90,7 +135,7 @@ export default function ExploreMapView({
               {loading
                 ? "Searching..."
                 : hasActiveAreaSearch
-                ? `Found ${activeCount} results in this area`
+                ? `Found ${displayedCount} results in this area`
                 : "Move the map and search this area"}
             </p>
           </div>
@@ -116,6 +161,21 @@ export default function ExploreMapView({
               placeholder="Search sport, venue, host..."
               className="w-full pl-12 pr-4 py-3 rounded-full bg-zinc-100 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 focus:bg-white transition-all"
             />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 pb-2 lg:pb-3">
+            <button
+              type="button"
+              onClick={() => onTonightChange(!tonightOnly)}
+              aria-pressed={tonightOnly}
+              className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors ${
+                tonightOnly
+                  ? "bg-orange-500 text-white border-orange-500"
+                  : "bg-white text-gray-700 border-gray-300 hover:border-orange-300"
+              }`}
+            >
+              {TONIGHT_FILTER_LABEL}
+            </button>
           </div>
 
           <div className="flex items-center gap-2 pb-2 lg:pb-4">
@@ -231,38 +291,60 @@ export default function ExploreMapView({
               <p className="text-xs text-zinc-400">Pan or zoom the map, then tap &quot;Search this area&quot;.</p>
             </div>
           ) : activeView === "events" ? (
-            filteredEvents.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-zinc-100 flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 text-zinc-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
+            visibleEvents.length === 0 ? (
+              tonightOnly ? (
+                <div className="text-center py-12">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-zinc-100 flex items-center justify-center">
+                    <svg
+                      className="w-5 h-5 text-zinc-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-zinc-900 mb-1">{TONIGHT_EMPTY_TITLE}</p>
+                  <p className="text-xs text-zinc-400 mb-4">{TONIGHT_EMPTY_DESCRIPTION}</p>
                 </div>
-                <p className="text-sm font-medium text-zinc-900 mb-1">No games found</p>
-                <p className="text-xs text-zinc-400 mb-4">
-                  {searchQuery
-                    ? "Try a different search"
-                    : "Try a different sport or create the first one."}
-                </p>
-                <Link
-                  href="/events/create"
-                  className="inline-block px-4 py-2 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800"
-                >
-                  Create Event
-                </Link>
-              </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-zinc-100 flex items-center justify-center">
+                    <svg
+                      className="w-5 h-5 text-zinc-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-zinc-900 mb-1">No games found</p>
+                  <p className="text-xs text-zinc-400 mb-4">
+                    {searchQuery
+                      ? "Try a different search"
+                      : "Try a different sport or create the first one."}
+                  </p>
+                  <Link
+                    href="/events/create"
+                    className="inline-block px-4 py-2 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800"
+                  >
+                    Create Event
+                  </Link>
+                </div>
+              )
             ) : (
-              filteredEvents.map((event) => (
+              visibleEvents.map((event) => (
                 <div
                   key={event.id}
                   ref={(node) => {
@@ -334,7 +416,7 @@ export default function ExploreMapView({
 
       <div className="relative flex-[3] lg:h-auto lg:flex-1 order-first lg:order-none min-h-0">
         <MapDynamic
-          events={filteredEvents}
+          events={visibleEvents}
           courts={filteredCourts}
           userLocation={userLocation}
           center={mapCenter}
