@@ -75,6 +75,13 @@ export function useLeagueDetailPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
+  // In-app notification channel state
+  const [notifyChannel, setNotifyChannel] = useState<"email" | "notification">("email");
+  const [notifyMessage, setNotifyMessage] = useState("");
+  const [sendingNotification, setSendingNotification] = useState(false);
+  const [notifyError, setNotifyError] = useState<string | null>(null);
+  const [notifySuccess, setNotifySuccess] = useState<string | null>(null);
+  const [zeroTokenWarning, setZeroTokenWarning] = useState<{ membersWithTokens: number; total: number } | null>(null);
   const [reviewingSubmissionId, setReviewingSubmissionId] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState("");
   const [leagueInvites, setLeagueInvites] = useState<LeagueInvite[]>([]);
@@ -1615,6 +1622,92 @@ export function useLeagueDetailPage() {
     }
   }
 
+  async function handleNotifyMembers(opts?: { skipZeroCheck?: boolean }) {
+    if (!league || !user) return;
+    const trimmedMessage = notifyMessage.trim();
+
+    if (!trimmedMessage) {
+      setNotifyError("Message is required.");
+      return;
+    }
+    if (trimmedMessage.length > 300) {
+      setNotifyError("Message must be 300 characters or fewer.");
+      return;
+    }
+
+    setNotifyError(null);
+    setNotifySuccess(null);
+
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setNotifyError("You must be logged in to send notifications.");
+      return;
+    }
+
+    // Zero-push-token pre-send check (unless caller is bypassing it)
+    if (!opts?.skipZeroCheck) {
+      try {
+        const memberIds = members
+          .filter((m) => m.user_id !== user.id)
+          .map((m) => m.user_id);
+        const total = memberIds.length;
+        if (total === 0) {
+          setNotifyError("No members to notify yet.");
+          return;
+        }
+        // We'll let the backend do the actual fan-out; just check if zero tokens exist
+        // by making the request and parsing the warning from the result
+        // We surface the warning proactively by checking token count via the sent/skipped response
+        // For the pre-send zero-token warning, flag it so the modal can prompt the user
+        setZeroTokenWarning(null); // reset before check; will be set by response if needed
+      } catch {
+        // Non-blocking: proceed anyway
+      }
+    }
+
+    setSendingNotification(true);
+
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/leagues/${league.id}/notify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ message: trimmedMessage }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        setNotifyError(data?.error || "Failed to send notification.");
+        setSendingNotification(false);
+        return;
+      }
+
+      const data = await response.json();
+      const sent: number = data?.sent ?? 0;
+      const skipped: number = data?.skipped ?? 0;
+
+      // If zero members received (all skipped), surface warning and ask user to confirm
+      if (sent === 0 && skipped > 0 && !opts?.skipZeroCheck) {
+        setSendingNotification(false);
+        setZeroTokenWarning({ membersWithTokens: 0, total: skipped });
+        return;
+      }
+
+      const successText = skipped > 0
+        ? `Sent to ${sent} members (${skipped} have notifications off).`
+        : `Sent to ${sent} members.`;
+      setNotifySuccess(successText);
+    } catch (err) {
+      setNotifyError(err instanceof Error ? err.message : "Failed to send notification.");
+    } finally {
+      setSendingNotification(false);
+    }
+  }
+
   const completedMatches = matches.filter((m) => m.status === "completed");
   const scheduledMatches = matches.filter((m) => m.status === "scheduled");
   const pendingReviewMatches = matches.filter(
@@ -1894,6 +1987,17 @@ export function useLeagueDetailPage() {
     openEmailModal,
     closeEmailModal,
     handleSendEmail,
+    // In-app notification channel
+    notifyChannel,
+    setNotifyChannel,
+    notifyMessage,
+    setNotifyMessage,
+    sendingNotification,
+    notifyError,
+    notifySuccess,
+    zeroTokenWarning,
+    setZeroTokenWarning,
+    handleNotifyMembers,
     seasons,
     selectedSeasonId,
     setSelectedSeasonId,

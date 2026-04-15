@@ -183,6 +183,16 @@ export default function LeagueDetailPageClient() {
     openEmailModal,
     closeEmailModal,
     handleSendEmail,
+    notifyChannel,
+    setNotifyChannel,
+    notifyMessage,
+    setNotifyMessage,
+    sendingNotification,
+    notifyError,
+    notifySuccess,
+    zeroTokenWarning,
+    setZeroTokenWarning,
+    handleNotifyMembers,
     seasons,
     selectedSeasonId,
     setSelectedSeasonId,
@@ -508,8 +518,29 @@ export default function LeagueDetailPageClient() {
         onClose={() => setShowAssignedTeamsModal(false)} onSave={handleSaveAssignedTeams} onAddDraft={addAssignedTeamDraft} onRemoveDraft={removeAssignedTeamDraft}
         onUpdateDraft={updateAssignedTeamDraft} isAssignedSlotTaken={isAssignedSlotTaken} />
       <DeleteLeagueModal isOpen={showDeleteModal} leagueName={league.name} memberCount={members.length} deleting={deleting} onClose={() => setShowDeleteModal(false)} onConfirm={handleDelete} />
-      <EmailMembersModal isOpen={showEmailModal && !!league} recipientCount={emailRecipientCount} subject={emailSubject} message={emailMessage} sending={sendingEmail} error={emailError} success={emailSuccess}
-        onSubjectChange={setEmailSubject} onMessageChange={setEmailMessage} onSend={handleSendEmail} onClose={closeEmailModal} />
+      <EmailMembersModal
+        isOpen={showEmailModal && !!league}
+        recipientCount={emailRecipientCount}
+        subject={emailSubject}
+        message={emailMessage}
+        sending={sendingEmail}
+        error={emailError}
+        success={emailSuccess}
+        onSubjectChange={setEmailSubject}
+        onMessageChange={setEmailMessage}
+        onSend={handleSendEmail}
+        onClose={closeEmailModal}
+        channel={notifyChannel}
+        onChannelChange={setNotifyChannel}
+        notifyMessage={notifyMessage}
+        onNotifyMessageChange={setNotifyMessage}
+        sendingNotification={sendingNotification}
+        notifyError={notifyError}
+        notifySuccess={notifySuccess}
+        zeroTokenWarning={zeroTokenWarning}
+        onDismissZeroTokenWarning={() => setZeroTokenWarning(null)}
+        onNotifySend={handleNotifyMembers}
+      />
       <InviteModal isOpen={showInviteModal && !!league} emailInput={inviteEmailInput} emails={inviteEmails} sending={sendingInvites} error={inviteError} success={inviteSuccess}
         onEmailInputChange={setInviteEmailInput} onAddEmail={addInviteEmailFromInput} onRemoveEmail={removeInviteEmail} onSend={handleSendInvites} onClose={closeInviteModal} />
     </div>
