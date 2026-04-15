@@ -287,6 +287,7 @@ function EventsContent() {
   const sportFromUrl = searchParams.get("sport") || "";
   const searchFromUrl = searchParams.get("search") || "";
   const modeFromUrl = searchParams.get("mode");
+  const tonightFromUrl = searchParams.get("tonight") === "1";
   const exploreMode: ExploreMode = modeFromUrl === "swipe" ? "swipe" : "map";
 
   const [events, setEvents] = useState<Event[]>([]);
@@ -296,6 +297,7 @@ function EventsContent() {
   const [loading, setLoading] = useState(true);
   const [sportFilter, setSportFilter] = useState(sportFromUrl);
   const [searchQuery, setSearchQuery] = useState(searchFromUrl);
+  const [tonightOnly, setTonightOnly] = useState(tonightFromUrl);
   const [activeView, setActiveView] = useState<SwipeTab>("events");
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "success" | "error">(
@@ -359,6 +361,21 @@ function EventsContent() {
       const query = nextParams.toString();
 
       router.replace(query ? `/events?${query}` : "/events", { scroll: false });
+    },
+    [router, searchParams]
+  );
+
+  const handleTonightChange = useCallback(
+    (nextValue: boolean) => {
+      setTonightOnly(nextValue);
+      const nextParams = new URLSearchParams(searchParams.toString());
+      if (nextValue) {
+        nextParams.set("tonight", "1");
+      } else {
+        nextParams.delete("tonight");
+      }
+      const query = nextParams.toString();
+      router.push(query ? `/events?${query}` : "/events", { scroll: false });
     },
     [router, searchParams]
   );
@@ -993,6 +1010,8 @@ function EventsContent() {
         activeCount={activeCount}
         eventRowRefs={eventRowRefs}
         courtRowRefs={courtRowRefs}
+        tonightOnly={tonightOnly}
+        onTonightChange={handleTonightChange}
         onSearchQueryChange={setSearchQuery}
         onSportFilterChange={setSportFilter}
         onGetLocation={handleGetLocation}
