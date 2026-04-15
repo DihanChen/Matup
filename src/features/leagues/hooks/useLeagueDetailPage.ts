@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { getApiBaseUrl } from "@/lib/api";
 import { syncProfileFromAuthUser } from "@/lib/queries/profile";
+import { ERROR_RUN_DISTANCE_INVALID } from "@/lib/result-submission-strings";
 import type { User } from "@supabase/supabase-js";
 import {
   EMAIL_REGEX,
@@ -1197,10 +1198,18 @@ export function useLeagueDetailPage() {
       return;
     }
 
-    const distanceMeters = Number.parseInt(runEntryDistanceMeters, 10);
-    if (!Number.isFinite(distanceMeters) || distanceMeters <= 0) {
-      setSessionsError("Distance must be a positive number.");
-      return;
+    // Distance is optional. Blank → omit from payload (backend falls back to
+    // the session's configured distance_meters). Non-blank must parse as a
+    // positive integer or we surface ERROR_RUN_DISTANCE_INVALID inline.
+    const trimmedDistance = runEntryDistanceMeters.trim();
+    let distanceMetersPayload: number | undefined = undefined;
+    if (trimmedDistance !== "") {
+      const parsedDistance = Number(trimmedDistance);
+      if (!Number.isFinite(parsedDistance) || parsedDistance <= 0) {
+        setSessionsError(ERROR_RUN_DISTANCE_INVALID);
+        return;
+      }
+      distanceMetersPayload = Math.round(parsedDistance);
     }
 
     const supabase = createClient();
@@ -1224,10 +1233,11 @@ export function useLeagueDetailPage() {
             Authorization: `Bearer ${authSession.access_token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            elapsedSeconds,
-            distanceMeters,
-          }),
+          body: JSON.stringify(
+            distanceMetersPayload === undefined
+              ? { elapsedSeconds }
+              : { elapsedSeconds, distanceMeters: distanceMetersPayload }
+          ),
         }
       );
 
