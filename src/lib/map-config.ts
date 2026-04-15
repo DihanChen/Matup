@@ -1,12 +1,10 @@
-const DEV_FALLBACK_STYLE_URL = "https://demotiles.maplibre.org/style.json";
+// Self-hosted OSM raster style — works on all domains, no API key required.
+// Used as fallback when NEXT_PUBLIC_MAP_STYLE_URL is not set.
+const OSM_FALLBACK_STYLE_URL = "/map-style.json";
 const CONFIGURED_STYLE_URL = process.env.NEXT_PUBLIC_MAP_STYLE_URL?.trim() || "";
 
 export function getMapStyleUrl(): string {
-  if (CONFIGURED_STYLE_URL) {
-    return CONFIGURED_STYLE_URL;
-  }
-
-  return DEV_FALLBACK_STYLE_URL;
+  return CONFIGURED_STYLE_URL || OSM_FALLBACK_STYLE_URL;
 }
 
 export function hasConfiguredMapStyle(): boolean {

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Map, { Marker, NavigationControl, type MapRef } from "react-map-gl/maplibre";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -107,6 +107,7 @@ export default function ExploreMap({
   const mapRef = useRef<MapRef | null>(null);
   const previousRef = useRef<{ lat: number; lng: number; zoom: number } | null>(null);
   const flyToTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
   const configuredStyle = useMemo(() => hasConfiguredMapStyle(), []);
   const styleUrl = useMemo(() => getMapStyleUrl(), []);
 
@@ -177,6 +178,27 @@ export default function ExploreMap({
     };
   }, [center, zoom]);
 
+  if (mapError) {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-100 gap-3">
+        <div className="w-12 h-12 rounded-full bg-zinc-200 flex items-center justify-center">
+          <svg className="w-6 h-6 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z" />
+          </svg>
+        </div>
+        <p className="text-sm font-medium text-zinc-700">Map unavailable</p>
+        <p className="text-xs text-zinc-500 text-center max-w-48">The map tiles could not be loaded. Try refreshing the page.</p>
+        <button
+          type="button"
+          onClick={() => { setMapError(null); }}
+          className="px-4 py-2 rounded-full bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="absolute inset-0">
       <Map
@@ -196,6 +218,11 @@ export default function ExploreMap({
         dragRotate={false}
         onMoveEnd={emitBoundsChange}
         onLoad={emitBoundsChange}
+        onError={(e) => {
+          if (e.error?.message?.includes("Failed to fetch") || e.error?.message?.includes("CORS")) {
+            setMapError(e.error.message);
+          }
+        }}
         style={{ width: "100%", height: "100%" }}
       >
         <NavigationControl position="bottom-right" showCompass={false} />
